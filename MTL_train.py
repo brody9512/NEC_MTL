@@ -174,96 +174,65 @@ parser.add_argument('--seed', type=int, default=42)
 
 #parse_args()를 통해 parser객체의 인자들 파싱
 args = parser.parse_args()
-path_=args.path
+# path_=args.path
+# layers=args.layers
+## print('layers :',layers)
+# gpu=args.gpu
+# optim=args.optim
+# EPOCHS = args.epoch
+# ver = args.ver
+# st = args.st
+# de = args.de
+# clipLimit_=args.clahe
+# train_batch=args.batch
+# min_side_=args.size
+# lr_=args.lr_
+# lr__=args.lr__
+# lr_p=args.lr___
+# seg_op= args.seg_op
+# seg_weight_= args.seg_weight
+# feature=args.feature
+# infer=args.infer
+# external=args.external
+# weight_=args.weight
+# cbam_ = args.cbam
+# half= args.half
+# thr_t_f=args.thr_t_f
+# thr=args.thr
+# clip_min=args.clip_min
+# clip_max=args.clip_max
+# rotate_angle = args.rotate_angle
+# rotate_p = args.rotate_p
+# rbc_b=args.rbc_b
+# rbc_c=args.rbc_c
+# rbc_p=args.rbc_p
+# ela_t_f=args.ela_t_f
+# ela_alpha=args.ela_alpha
+# ela_sigma=args.ela_sigma
+# ela_alpha_aff=args.ela_alpha_aff
+# ela_p=args.ela_p
+# gaus_t_f=args.gaus_t_f
+# gaus_min=args.gaus_min
+# gaus_max=args.gaus_max
+# gaus_p=args.gaus_p
+# cordrop_t_f=args.cordrop_t_f
+# Horizontal_t_f=args.Horizontal_t_f
+# Horizontal_p = args.Horizontal_p
+# gamma_min=args.gamma_min
+# gamma_max=args.gamma_max
+# gamma_p=args.gamma_p
+# gamma_t_f=args.gamma_t_f
+# sizecrop_min_r=args.sizecrop_min_r
+# sizecrop_p=args.sizecrop_p
+# sizecrop_t_f=args.sizecrop_t_f
 
-layers=args.layers
-print('layers :',layers)
-
-
-gpu=args.gpu
-optim=args.optim
-EPOCHS = args.epoch
-
-ver = args.ver
-st = args.st
-de = args.de
-
-clipLimit_=args.clahe
-train_batch=args.batch
-
-min_side_=args.size
-lr_=args.lr_
-lr__=args.lr__
-lr_p=args.lr___
-
-seg_op= args.seg_op
-seg_weight_= args.seg_weight
-
-feature=args.feature
-
-infer=args.infer
-external=args.external
-weight_=args.weight
-
-cbam_ = args.cbam
-half= args.half
-
-thr_t_f=args.thr_t_f
-thr=args.thr
-
-clip_min=args.clip_min
-clip_max=args.clip_max
-
-rotate_angle = args.rotate_angle
-rotate_p = args.rotate_p
-
-rbc_b=args.rbc_b
-rbc_c=args.rbc_c
-rbc_p=args.rbc_p
-
-ela_t_f=args.ela_t_f
-ela_alpha=args.ela_alpha
-ela_sigma=args.ela_sigma
-ela_alpha_aff=args.ela_alpha_aff
-ela_p=args.ela_p
-
-gaus_t_f=args.gaus_t_f
-gaus_min=args.gaus_min
-gaus_max=args.gaus_max
-gaus_p=args.gaus_p
-
-
-cordrop_t_f=args.cordrop_t_f
-
-
-Horizontal_t_f=args.Horizontal_t_f
-Horizontal_p = args.Horizontal_p
-
-
-gamma_min=args.gamma_min
-gamma_max=args.gamma_max
-gamma_p=args.gamma_p
-gamma_t_f=args.gamma_t_f
-
-
-sizecrop_min_r=args.sizecrop_min_r
-sizecrop_p=args.sizecrop_p
-sizecrop_t_f=args.sizecrop_t_f
-
-resizecrop_p=args.resizecrop_p
-resizecrop_t_f=args.resizecrop_t_f
-
-
-
-epoch_loss_ =args.epoch_loss
-
-k_size_=args.k_size
-
-loss_type_=args.loss_type
-
-clahe_l = args.clahe_limit
-
-seed_=args.seed
+# resizecrop_p=args.resizecrop_p
+# resizecrop_t_f=args.resizecrop_t_f
+# epoch_loss_ =args.epoch_loss
+# k_size_=args.k_size
+# loss_type_=args.loss_type
+# clahe_l = args.clahe_limit
+# seed_=args.seed
 
 # 현재 날짜와 시간을 YYYYMMDD_HHMM 형식으로 가져옵니다.
 current_time = datetime.datetime.now().strftime("%m%d")
@@ -327,7 +296,10 @@ if not (external or infer):
         ep_loss='clos'
 
     # 파일 이름 생성
-    name = f"{current_time}_{layers}_{seg_op}_{lr_}_{min_side_}_b{train_batch}_cla{clipLimit_}_cli{clip_min}_{clip_max}_rot{rotate_angle}_rbc_b{rbc_b}_c{rbc_c}_ela_{ela_t_f_str}_alp{ela_alpha}_sig{ela_sigma}_aff{ela_alpha_aff}_ela_p{ela_p}_gaus_{gaus_t_f_str}_{gaus_min}_{gaus_max}_ho_{Horizontal_t_f_str}_gam_{gamma_t_f_str}_{gamma_min}_{gamma_max}_sic_{sizecrop_t_f_str}_{sizecrop_min_r}_resic_{resizecrop_t_f_str}_codp_{cordrop_t_f_str}_cl_{clahe_l}_{ep_loss}_{loss_type_}_{feature}"
+    name = f"{current_time}_{layers}_{seg_op}_{lr_}_{min_side_}_b{train_batch}_cla{clipLimit_}_cli{clip_min}_{clip_max}_rot{rotate_angle}
+    _rbc_b{rbc_b}_c{rbc_c}_ela_{ela_t_f_str}_alp{ela_alpha}_sig{ela_sigma}_aff{ela_alpha_aff}_ela_p{ela_p}_gaus_{gaus_t_f_str}_{gaus_min}_{gaus_max}
+    _ho_{Horizontal_t_f_str}_gam_{gamma_t_f_str}_{gamma_min}_{gamma_max}_sic_{sizecrop_t_f_str}_{sizecrop_min_r}_resic_{resizecrop_t_f_str}_codp_{cordrop_t_f_str}
+    _cl_{clahe_l}_{ep_loss}_{loss_type_}_{feature}"
  
     # # 문자열 내의 'False'와 'True'를 각각 'F'와 'T'로 변환합니다.
     # # 단어 경계(\b)를 사용하여 정확한 단어만 매칭됩니다.
@@ -787,25 +759,6 @@ class CustomDataset(Dataset):
     def process_row_angle_ok_background_ok(self, img, xmin, xmax, ymin, ymax):
         return img[ymin:ymax+1, xmin:xmax+1] 
 
-
-
-    # def get_cropping_coords(self, img):
-    #     img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-    #     #img = img.astype(np.uint8)
-    #     _, binary = cv2.threshold(img, 100, 255, cv2.THRESH_BINARY_INV)
-    #     contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    #     mask = np.zeros_like(binary)
-    #     cv2.drawContours(mask, contours, -1, (255), thickness=cv2.FILLED)
-    #     y, x = np.where(mask == 255)
-    #     xmin, xmax = np.min(x), np.max(x)
-    #     ymin, ymax = np.min(y), np.max(y)
-    #     return xmin, xmax, ymin, ymax
-
-
-    # def crop_image_using_coords(self, img, xmin, xmax, ymin, ymax):
-    #     return img[ymin:ymax+1, xmin:xmax+1]
-
-
     
     def normalize(self, image, option=False, **kwargs):
         if image.dtype != np.float32:  # Convert the image to float32 if it's not already
@@ -1145,39 +1098,7 @@ class Uptask_Loss(torch.nn.Module):
         return total, total_
 
 
-# class Uptask_Loss(torch.nn.Module):
-#     def __init__(self, cls_weight=1.0, seg_weight=1.0, consist_weight=0):
-#         super().__init__()
-#         self.loss_cls = torch.nn.BCEWithLogitsLoss()
-#         self.loss_seg = Dice_BCE_Loss()
-#         self.loss_rec = torch.nn.L1Loss()
-#         self.loss_consist = Consistency_Loss()
-        
-#         self.cls_weight = cls_weight
-#         self.seg_weight = seg_weight
-#         self.rec_weight = 1.0
-#         self.consist_weight = consist_weight
-
-#     def forward(self, cls_pred=None, seg_pred=None, rec_pred=None, cls_gt=None, seg_gt=None, rec_gt=None, consist=False):
-#         loss_cls = self.loss_cls(cls_pred, cls_gt) if cls_pred is not None and cls_gt is not None else 0
-        
-#         # If either seg_pred or seg_gt is None, calculate only the total loss without segmentation loss
-#         loss_seg = self.loss_seg(seg_pred, seg_gt) if seg_pred is not None and seg_gt is not None else 0
-#         loss_consist = self.loss_consist(cls_pred, seg_pred) if consist else 0
-        
-#         total = self.cls_weight * loss_cls + self.seg_weight * loss_seg + self.consist_weight * loss_consist
-        
-#         total_ = {'CLS_Loss': (self.cls_weight * loss_cls).item(), 
-#                   'SEG_Loss': (self.seg_weight * loss_seg).item()}
-                  
-#         if consist:
-#             total_['Consist_Loss'] = (self.consist_weight * loss_consist).item()
-        
-#         return total, total_
-
-
-
-def create_optim(name, net, lr):
+def create_optimizer(name, net, lr):
     if name == 'adam':
         optimizer    = torch.optim.Adam(params=net.parameters(), lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=5e-4, amsgrad=False)
 
@@ -1198,6 +1119,7 @@ aux_params=dict(
     classes=1,
 )
 
+# MTL multitask model
 class MultiTaskModel(nn.Module):
     def __init__(self, layers, aux_params, use_cbam=False, reduction_ratio=16, kernel_size=7):
         super().__init__()
@@ -1270,8 +1192,8 @@ model = model.to(DEVICE)
 
 
 
-#optimizer= create_optim('adam', model, args) #args 안에 args.lr 옵션 있어야
-optimizer= create_optim(optim, model, lr__) #args 안에 args.lr 옵션 있어야
+#optimizer= create_optimizer('adam', model, args) #args 안에 args.lr 옵션 있어야
+optimizer= create_optimizer(optim, model, lr__) #args 안에 args.lr 옵션 있어야
 
 # Define the learning rate scheduler
 if lr_ == 'reduce':

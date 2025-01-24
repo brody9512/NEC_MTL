@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch.nn.modules.loss import _Loss
 import torch
 
-# from MTL train
+# Good to go. == for both train & test
 def soft_dice_score(output: torch.Tensor, target: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7, dims=None,) -> torch.Tensor:
     assert output.size() == target.size()
     if dims is not None:

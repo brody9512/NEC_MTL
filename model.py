@@ -1,6 +1,5 @@
 # are these the same for train & test?
-# CBAMBlock? --> 없애도 됨 
-# args from argparser in class params; need to be fixed later on
+# args from argparser in class params; can this be fixed in regards to redundancy?
 import segmentation_models_pytorch as smp
 import random
 import torch
