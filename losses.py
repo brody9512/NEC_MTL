@@ -123,48 +123,6 @@ class Dice_BCE_Loss(torch.nn.Module):
 
         return self.dice_weight*dice_loss + self.bce_weight*bce_loss
 
-class Consistency_Loss_Train(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
-        
-        k_size=k_size_ ## 만액에 size 1024에 k_size= 16이라면!
-        final_size = int((min_side_ / k_size** 2))**2  #root 가하는 건 math.sqrt(min_side_)
-        self.L2_loss  = torch.nn.MSELoss()
-        self.maxpool  = torch.nn.MaxPool2d(kernel_size=k_size, stride=k_size, padding=0)
-        self.avgpool  = torch.nn.AvgPool2d(kernel_size=k_size, stride=k_size, padding=0)
-        self.fc = nn.Linear(1,final_size)  # 채널 수를 1에서 16로 변경 
-        #min_side =1024 , kernel_size = 8    final_size>> 256 
-        #min_side =1024 , kernel_size = 16   final_size>> 16
-
-    def forward(self, y_cls, y_seg):
-        
-        y_cls = torch.sigmoid(y_cls)  # (B, C)
-        y_seg = torch.sigmoid(y_seg)  # (B, C, H, W)
-        
-        y_cls = self.fc(y_cls)
-
-        y_seg = self.avgpool(self.maxpool(y_seg)).flatten(start_dim=1, end_dim=-1)  # (B, C)
-        
-        loss  = self.L2_loss(y_seg, y_cls)
-
-        return loss
-    
-class Consistency_Loss_Test(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.L2_loss  = torch.nn.MSELoss()
-        self.maxpool  = torch.nn.MaxPool2d(kernel_size=16, stride=16, padding=0)
-        self.avgpool  = torch.nn.AvgPool2d(kernel_size=16, stride=16, padding=0)
-
-    def forward(self, y_cls, y_seg):
-        y_cls = torch.sigmoid(y_cls)  # (B, C)
-        y_seg = torch.sigmoid(y_seg)  # (B, C, H, W)
-
-        y_seg = self.avgpool(self.maxpool(y_seg)).flatten(start_dim=1, end_dim=-1)  # (B, C)
-        loss  = self.L2_loss(y_seg, y_cls)
-
-        return loss
-
 class Uptask_Loss_Train(torch.nn.Module):
     def __init__(self, cls_weight=1.0, seg_weight=1.0, consist_weight=0, loss_type='bc_di'):
         
@@ -174,7 +132,7 @@ class Uptask_Loss_Train(torch.nn.Module):
         self.loss_cls = None
         self.loss_seg = None
         self.loss_rec = torch.nn.L1Loss()
-        self.loss_consist = Consistency_Loss_Train()
+        # self.loss_consist = Consistency_Loss_Train()
         
         # Weights for each component of the loss
         self.cls_weight = cls_weight
@@ -187,33 +145,6 @@ class Uptask_Loss_Train(torch.nn.Module):
         
         self.loss_cls = torch.nn.BCEWithLogitsLoss()
         self.loss_seg = Dice_BCE_Loss()
-        
-        '''
-        Can this be removed and simplfied since we're going with bc_di and disregarding others?
-        if self.loss_type == 'bc_di':
-            self.loss_cls = torch.nn.BCEWithLogitsLoss()
-            self.loss_seg = Dice_BCE_Loss()
-
-        elif self.loss_type == 'bc_iou':
-            self.loss_cls = torch.nn.BCEWithLogitsLoss()  # Assuming we keep BCE for classification
-            self.loss_seg = IoULoss()
-
-        elif self.loss_type == 'bc_tv':
-            self.loss_cls = torch.nn.BCEWithLogitsLoss()
-            self.loss_seg = TverskyLoss()
-            
-        elif self.loss_type == 'fo_di':
-            self.loss_cls = FocalLoss()
-            self.loss_seg = Dice_BCE_Loss()
-            
-        elif self.loss_type == 'fo_tv':
-            self.loss_cls = FocalLoss()
-            self.loss_seg = TverskyLoss()
-
-        elif self.loss_type == 'fo_iou':
-            self.loss_cls = FocalLoss()
-            self.loss_seg = IoULoss()
-        '''
 
 
     def forward(self, cls_pred=None, seg_pred=None, rec_pred=None, cls_gt=None, seg_gt=None, rec_gt=None, consist=False):
@@ -243,7 +174,7 @@ class Uptask_Loss_Test(torch.nn.Module):
         self.loss_cls     = torch.nn.BCEWithLogitsLoss()
         self.loss_seg     = Dice_BCE_Loss()
         self.loss_rec     = torch.nn.L1Loss()
-        self.loss_consist = Consistency_Loss_Test()
+        # self.loss_consist = Consistency_Loss_Test()
 
 
     def forward(self, cls_pred=None, cls_gt=None):

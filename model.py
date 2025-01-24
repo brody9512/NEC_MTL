@@ -1,14 +1,33 @@
 # are these the same for train & test?
-# CBAMBlock?
+# CBAMBlock? --> 없애도 됨 
 # args from argparser in class params; need to be fixed later on
 import segmentation_models_pytorch as smp
+import random
+import torch
+import torch.nn as nn
+import os
+import numpy as np
 
+def my_seed_everywhere(seed: int = 42):
+    random.seed(seed)  # random
+    np.random.seed(seed)  # numpy
+    os.environ["PYTHONHASHSEED"] = str(seed)  # os
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # For multiGPU
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+def seed_worker(worker_id):
+    worker_seed = torch.initial_seed() % 2**32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
 
 class MultiTaskModel(nn.Module):
     def __init__(self, layers, aux_params, use_cbam=False, reduction_ratio=16, kernel_size=7):
         super().__init__()
         
-        self.use_cbam = use_cbam
+        # self.use_cbam = use_cbam
         
         self.is_mit_encoder = 'mit' in layers
         
@@ -16,10 +35,10 @@ class MultiTaskModel(nn.Module):
         #print('in_channels :',in_channels)
         self.base_model = smp.Unet(layers, encoder_weights='imagenet', in_channels=in_channels, classes=1, aux_params=aux_params)
 
-        if self.use_cbam:
-            self.cbam_block = CBAMBlock(in_channels=self.base_model.encoder.out_channels[-1], 
-                                        reduction_ratio=reduction_ratio, 
-                                        kernel_size=kernel_size)
+        # if self.use_cbam:
+        #     self.cbam_block = CBAMBlock(in_channels=self.base_model.encoder.out_channels[-1], 
+        #                                 reduction_ratio=reduction_ratio, 
+        #                                 kernel_size=kernel_size)
 
     def forward(self, x):
         

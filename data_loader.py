@@ -1,9 +1,15 @@
-# CustomDataset Class requires arguments from Argparser section, which need to be fixed later on
-# CustomDataset is different for train & test. Is putting this on a diff file even possible?
-# only Normalize() function is duplicate
+# CustomDataset Class requires arguments from args (argparser) values. Could this be fixed?
+# CustomDataset is different for train & test code files. Is putting this on a diff file like here on dataset.py even possible?
+#   --> put it separately
+
+# only Normalize() function is duplicate so it can be put on a differnt file, but other functions are different between train and test
+
+# segmentation for internal but only classification for external? --> If dataset logic for training vs. testing is significantly different, then
+#   separate so = class InternalDataset(...) in dataset_internal.py & class ExternalDataset(...) in dataset_external.py --> YES! 
 import albumentations as A
 from albumentations import Lambda as A_Lambda
 from monai.data import Dataset
+import numpy as np
 
 
 class MyLambda(A_Lambda):

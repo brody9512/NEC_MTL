@@ -20,6 +20,7 @@ import config
 def main():
     # 1. Parse arguments
     args = config.get_args_train()
+
     path_=args.path
     layers=args.layers
     gpu=args.gpu
@@ -82,7 +83,7 @@ def main():
     change_epoch = [0, 100, 120, 135, 160, 170, 175]
     
     # Dictionary mapping seg_op values to their corresponding ratios
-    ratio_map = {
+    ratio_map = { ## 학습을 효율화 할 수 있게 weight을 조정해본 것 --> 없애도됨. 단지 나중에 이해하고 없애기
         'seg_fast': [[1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [1, 0]],
         'seg_slow': [[5, 5], [5, 5], [5, 5], [3, 7], [3, 7], [3, 7], [3, 7]],
         'consist_0': [[5, 5, 0], [5, 5, 0], [5, 5, 0], [5, 0, 5], [5, 0, 5], [5, 0, 5], [5, 0, 5]],
@@ -107,7 +108,7 @@ def main():
         consist_ = False
     
     # 2. Seed everything for reproducibility
-    my_seed_everywhere(seed=42)
+    model.my_seed_everywhere(seed=42)
     
     # 3. Set up GPU environment
     os.environ["CUDA_VISIBLE_DEVICES"] = gpu
@@ -119,6 +120,13 @@ def main():
     val_df   = df[df["Mode_1"] == "validation"]
     
     # Create your dataset class (place it here or import it)
+    train_dataset = CustomDataset(
+        data_frame=train_df, 
+        training=True, 
+        rotate_angle=args.rotate_angle,
+        rotate_p=args.rotate_p,
+        ### put more
+    ) 
     
     # Wrap them in DataLoaders (train_loader, val_loader)
     # this is the same for train & test; could this be simplified?

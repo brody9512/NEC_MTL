@@ -418,11 +418,11 @@ class CustomDataset(Dataset):
     def __init__(self, data_frame, training=True,apply_voi=False,hu_threshold=None,clipLimit=None,min_side=None):
         
         self.data_frame = data_frame
-        self.training = training
+        self.training = training ## args.training
         self.apply_voi=apply_voi
         self.hu_threshold = hu_threshold
         self.clipLimit=clipLimit
-        self.min_side=min_side
+        self.min_side=min_side ## args.size
         
         # Always initialize self.transforms
         self.transforms = None
@@ -2047,7 +2047,7 @@ print("ROC curve (area = %0.2f)" % auc(fpr, tpr),'\n')
 print( f'weight : \n{name}\n' )
 print(f'Thresold Value : {thr_val}')
 
-
+# Gradcam
 from pytorch_grad_cam import GradCAM, ScoreCAM, GradCAMPlusPlus, AblationCAM, XGradCAM, EigenCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
 
