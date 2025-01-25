@@ -1,0 +1,25 @@
+Needs work: 
+model.py
+utils.py
+metrics.py
+losses.py
+train.py
+data_loader.py for test.py 
+
+
+Comments from file:
+data_loader
+-  # segmentation and classification both for train but only classification for test.py --> If dataset logic for training vs. testing is significantly different, then separate so = class InternalDataset(...) in dataset_internal.py & class ExternalDataset(...) in dataset_external.py --> I asked and the answer was YES! 
+
+
+Done:
+config.py
+optim.py
+data_loader.py --> CustomDataset_Train
+
+
+ChatGPT input:
+can you give me guidance on refactoring this code for readability, maintainability, clarity, conciseness? this would be train.py of the deep learning research model. It was developed in a big chunk of one fat file. There are two main codes, MTL_train.py and MTL_test.py. This is only for refactoring MTL_train --> which will be train.py
+As of now, I identified directory architecture to split these in (there is also MTL_test.py but its very similar and uses similar functions, so if this is done well, I will be able to do the test.py as well): train.py (where everything combines to run main()),optim.py for optimizer, config.py for argparser, data_loader.py for Class CustomDataset and MyLambda, model.py for multitasklearning model, metrics.py for metrics, utils for saving checkpoints, seed_worker, my seed everywhere, not sure what to add after please think, losses.py for loss. This is the structure I thought of so far, if needed please give me suggestions. Also, Ive made comments for you to help in refactoring: # CBAMBlock? --> 없애도 됨, # args from argparser in class params; can this be fixed in regards to redundancy?, # CustomDataset is different for train & test code files. Is putting this on a diff file like here on dataset.py even possible?
+#   --> put it separately, # only Normalize() function is duplicate so it can be put on a differnt file, but other functions are different between train and test, # segmentation for internal but only classification for external? --> If dataset logic for training vs. testing is significantly different, then
+#   separate so = class InternalDataset(...) in dataset_internal.py & class ExternalDataset(...) in dataset_external.py --> YES! 
