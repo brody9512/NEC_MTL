@@ -5,7 +5,7 @@ import random
 import torch
 import torch.nn as nn
 import os
-import numpy as np
+import numpy as np 
 
 def my_seed_everywhere(seed: int = 42):
     random.seed(seed)  # random

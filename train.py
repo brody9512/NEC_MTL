@@ -11,16 +11,15 @@ from torch.utils.data import DataLoader
 
 # Import from Directory Architecture
 from config import get_args_train
-import utils  # or any other utility you need
-import data_loader
-import model
+import utils
+from dataset.train_dataset import CustomDataset_Test
 import losses
 import optim
 
 
 
 def main():
-    # 1. Parse arguments
+    # Parse arguments
     args = get_args_train()
 
     # path_=args.path
@@ -80,8 +79,14 @@ def main():
     # loss_type_=args.loss_type
     # clahe_l = args.clahe_limit
     # seed_=args.seed
+    
+    # Setup device
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    # Prepare output directory
     current_time = datetime.datetime.now().strftime("%m%d")
+    
     change_epoch = [0, 100, 120, 135, 160, 170, 175]
     
     # Dictionary mapping seg_op values to their corresponding ratios
@@ -121,13 +126,20 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
+    
+    
+    
+    
+    
+    
+    
     # 4. Load your data
     df = pd.read_csv(args.path)  # Contains train, val, test splits or just train/val
     train_df = df[df["Mode_1"] == "train"]
     val_df   = df[df["Mode_1"] == "validation"]
     
     ## Create your dataset class (place it here or import it)
-    train_dataset = data_loader.CustomDataset(
+    train_dataset = train_dataset.CustomDataset(
         data_frame=train_df, 
         training=True, 
         rotate_angle=args.rotate_angle,
@@ -153,9 +165,9 @@ def main():
     test_df = df_filtered[df_filtered['Mode_1'] == 'test']
     
     if not args.external:
-        train_dataset = data_loader.CustomDataset(train_df, training=True, apply_voi=False, hu_threshold=None, clipLimit=args.clahe, min_side=args.size)
-        val_dataset = data_loader.CustomDataset(val_df, training=False, apply_voi=False, hu_threshold=None, clipLimit=args.clahe, min_side=args.size)
-        test_dataset = data_loader.CustomDataset(test_df, training=False, apply_voi=False, hu_threshold=None, clipLimit=args.clahe, min_side=args.size)
+        train_dataset = CustomDataset_Test(train_df, training=True, apply_voi=False, hu_threshold=None, clipLimit=args.clahe, min_side=args.size)
+        val_dataset = CustomDataset_Test(val_df, training=False, apply_voi=False, hu_threshold=None, clipLimit=args.clahe, min_side=args.size)
+        test_dataset = CustomDataset_Test(test_df, training=False, apply_voi=False, hu_threshold=None, clipLimit=args.clahe, min_side=args.size)
 
         batch_size_train = args.batch
         batch_size_val = 1
@@ -166,7 +178,7 @@ def main():
         test_loader = DataLoader(test_dataset, batch_size=batch_size_test, collate_fn=monai.data.utils.default_collate, shuffle=False, num_workers=0, worker_init_fn=model.seed_worker)
     else:
         batch_size_test=1
-        test_dataset = data_loader.CustomDataset(test_df, training=False, apply_voi=False, hu_threshold=None, clipLimit=args.clahe, min_side=args.size)
+        test_dataset = CustomDataset_Test(test_df, training=False, apply_voi=False, hu_threshold=None, clipLimit=args.clahe, min_side=args.size)
         test_loader = DataLoader(test_dataset, batch_size=batch_size_test, collate_fn=monai.data.utils.default_collate, shuffle=False, num_workers=0, worker_init_fn=model.seed_worker)
         
     # Build your model 

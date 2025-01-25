@@ -1051,29 +1051,32 @@ class Uptask_Loss(torch.nn.Module):
         # Select loss type
         self.loss_type = loss_type
         
-        if self.loss_type == 'bc_di':
-            self.loss_cls = torch.nn.BCEWithLogitsLoss()
-            self.loss_seg = Dice_BCE_Loss()
+        self.loss_cls = torch.nn.BCEWithLogitsLoss()
+        self.loss_seg = Dice_BCE_Loss()
+        
+        # if self.loss_type == 'bc_di':                                         --> this part we no longer need??
+        #     self.loss_cls = torch.nn.BCEWithLogitsLoss()
+        #     self.loss_seg = Dice_BCE_Loss()
 
-        elif self.loss_type == 'bc_iou':
-            self.loss_cls = torch.nn.BCEWithLogitsLoss()  # Assuming we keep BCE for classification
-            self.loss_seg = IoULoss()
+        # elif self.loss_type == 'bc_iou':
+        #     self.loss_cls = torch.nn.BCEWithLogitsLoss()  # Assuming we keep BCE for classification
+        #     self.loss_seg = IoULoss()
 
-        elif self.loss_type == 'bc_tv':
-            self.loss_cls = torch.nn.BCEWithLogitsLoss()
-            self.loss_seg = TverskyLoss()
+        # elif self.loss_type == 'bc_tv':
+        #     self.loss_cls = torch.nn.BCEWithLogitsLoss()
+        #     self.loss_seg = TverskyLoss()
             
-        elif self.loss_type == 'fo_di':
-            self.loss_cls = FocalLoss()
-            self.loss_seg = Dice_BCE_Loss()
+        # elif self.loss_type == 'fo_di':
+        #     self.loss_cls = FocalLoss()
+        #     self.loss_seg = Dice_BCE_Loss()
             
-        elif self.loss_type == 'fo_tv':
-            self.loss_cls = FocalLoss()
-            self.loss_seg = TverskyLoss()
+        # elif self.loss_type == 'fo_tv':
+        #     self.loss_cls = FocalLoss()
+        #     self.loss_seg = TverskyLoss()
 
-        elif self.loss_type == 'fo_iou':
-            self.loss_cls = FocalLoss()
-            self.loss_seg = IoULoss()
+        # elif self.loss_type == 'fo_iou':
+        #     self.loss_cls = FocalLoss()
+        #     self.loss_seg = IoULoss()
             
 
 
