@@ -23,7 +23,7 @@ def seed_worker(worker_id):
     random.seed(worker_seed)
 
 class MultiTaskModel(nn.Module):
-    def __init__(self, layers, aux_params, use_cbam=False, reduction_ratio=16, kernel_size=7):
+    def __init__(self, layers, aux_params, reduction_ratio=16, kernel_size=7):
         super().__init__()
         
         # self.use_cbam = use_cbam
@@ -64,11 +64,3 @@ class MultiTaskModel(nn.Module):
             classification_output = None
 
         return segmentation_output, classification_output
-    
-aux_params=dict(
-    pooling='avg',
-    dropout=0.5,
-    activation=None,
-    classes=1,)
-
-model = MultiTaskModel(layers=layers, aux_params=aux_params, use_cbam=cbam_)

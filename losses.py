@@ -1,9 +1,17 @@
-# good. just some args are in the function which might need to be fixed later on, but the skeleton/structure looks good.
+# only using diceloss, dicebceloss, and uptask loss
 from typing import Optional, List
 from torch import nn
 import torch.nn.functional as F
 from torch.nn.modules.loss import _Loss
 import torch
+# from segmentation_models_pytorch.utils.base import to_tensor
+import segmentation_models_pytorch as smp
+
+
+# To_tensor is a helper function from old SMP library, but it's not exposed on newer versions 
+# So, create custom function to onvert Python lists/NumPy arrays into PyTorch tensors
+def to_tensor(data, dtype=None):
+    return torch.as_tensor(data, dtype=dtype)
 
 # Same for both train & test
 def soft_dice_score(output, target, smooth=0.0, eps=1e-7, dims=None): # (output: torch.Tensor, target: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7, dims=None,) -> torch.Tensor:
@@ -17,7 +25,7 @@ def soft_dice_score(output, target, smooth=0.0, eps=1e-7, dims=None): # (output:
     dice_score = (2.0 * intersection + smooth) / (cardinality + smooth).clamp_min(eps)
     return dice_score
 
-class DiceLoss(_Loss): # DiceLoss(nn.module) $$
+class DiceLoss(_Loss): # DiceLoss(nn.module) ??
     def __init__(
         self,
         mode: str,
@@ -33,7 +41,7 @@ class DiceLoss(_Loss): # DiceLoss(nn.module) $$
         self.mode = mode
         if classes is not None:
             assert mode != 'binary', "Masking classes is not supported with mode=binary"
-            classes = to_tensor(classes, dtype=torch.long)
+            classes = to_tensor(classes, dtype=torch.long) ## where is this function from?
 
         self.classes = classes
         self.from_logits = from_logits
@@ -109,35 +117,6 @@ class DiceLoss(_Loss): # DiceLoss(nn.module) $$
     def compute_score(self, output, target, smooth=0.0, eps=1e-7, dims=None) -> torch.Tensor:
         return soft_dice_score(output, target, smooth, eps, dims)
 
-# class DiceLoss(nn.Module):
-#     """
-#     Variation of standard dice-based segmentation loss.
-#     """
-#     def __init__(self, mode='binary', from_logits=True, smooth=0.0, eps=1e-7):
-#         super().__init__()
-#         assert mode in {'binary', 'multiclass', 'multilabel'}
-#         self.mode = mode
-#         self.from_logits = from_logits
-#         self.smooth = smooth
-#         self.eps = eps
-
-#     def forward(self, y_pred, y_true):
-#         if self.from_logits:
-#             if self.mode == 'multiclass':
-#                 y_pred = y_pred.log_softmax(dim=1).exp()
-#             else:
-#                 y_pred = F.logsigmoid(y_pred).exp()
-
-#         dims = (0, 2, 3)  # typical for segmentation
-#         score = soft_dice_score(
-#             y_pred, y_true.type_as(y_pred),
-#             smooth=self.smooth,
-#             eps=self.eps,
-#             dims=dims
-#         )
-#         loss = 1.0 - score
-#         return loss.mean()
-
 class Dice_BCE_Loss(nn.Module):
     def __init__(self):
         super().__init__()
@@ -208,5 +187,3 @@ class Uptask_Loss_Test(torch.nn.Module):
     def forward(self, cls_pred=None, cls_gt=None):
             total = self.loss_cls(cls_pred, cls_gt)
             return total
-
-

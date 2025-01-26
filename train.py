@@ -8,11 +8,13 @@ import monai
 from monai.transforms import *
 from monai.data import Dataset
 from torch.utils.data import DataLoader
+import ssl
 
 # Import from Directory Architecture
 from config import get_args_train
 import utils
-from dataset.train_dataset import CustomDataset_Test
+from dataset.train_dataset import CustomDataset_Train
+import model
 import losses
 import optim
 
@@ -116,9 +118,9 @@ def main():
     # optim=args.optim
     # EPOCHS = args.epoch
     # ver = args.ver ## version
-        # st = args.st ##  
-        # de = args.de ## 
-    # clipLimit_=args.clahe # clahe 기법의 limit (사진을 limit을 주면서 자르기 때문에 cliplimit으로 함)
+        # st = args.st ## delete
+        # de = args.de ## delete
+    # clipLimit_=args.clahe_cliplimit # clahe_cliplimit 기법의 limit (사진을 limit을 주면서 자르기 때문에 cliplimit으로 함)
     # train_batch=args.batch
     # min_side_=args.size
         # lr_=args.lr_ ## lr_type
@@ -146,10 +148,10 @@ def main():
         # ela_sigma=args.ela_sigma ## elastic_sigma
         # ela_alpha_aff=args.ela_alpha_aff ## elastic_alpha_affine
         # ela_p=args.ela_p ## percentage
-        # gaus_t_f=args.gaus_t_f
+        # gaus_t_f=args.gaus_t_f ## gaus_truefalse
     # gaus_min=args.gaus_min
     # gaus_max=args.gaus_max
-        # gaus_p=args.gaus_p
+        # gaus_p=args.gaus_p ## gaus_percentage
     # cordrop_t_f=args.cordrop_t_f
         # Horizontal_t_f=args.Horizontal_t_f
         # Horizontal_p = args.Horizontal_p
@@ -165,8 +167,10 @@ def main():
     # epoch_loss_ =args.epoch_loss
     # k_size_=args.k_size
     # loss_type_=args.loss_type
-    # clahe_l = args.clahe_limit ## clahe_limit
+        # clahe_l = args.clahe_limit ## clahe_limit
     # seed_=args.seed
+    
+    ssl._create_default_https_context = ssl._create_unverified_context
     
     # Setup device
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -187,10 +191,13 @@ def main():
     # 2. Seed everything for reproducibility
     model.my_seed_everywhere(seed=42)
     
-    # 3. Set up GPU environment
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
+    aux_params=dict(
+    pooling='avg',
+    dropout=0.5,
+    activation=None,
+    classes=1,)
+
+    model = MultiTaskModel(layers=layers, aux_params=aux_params)
     
     
     
@@ -208,7 +215,7 @@ def main():
         data_frame=train_df, 
         training=True, 
         rotate_angle=args.rotate_angle,
-        rotate_p=args.rotate_p,
+        rotate_percentage=args.rotate_percentage,
         ### put more
     ) 
     
@@ -218,67 +225,6 @@ def main():
     df['img_dcm'] = df['img_dcm'].apply(lambda x: x.replace('/home/brody9512', '') if x.startswith('/home/brody9512') else x)
     df['mask_tiff'] = df['mask_tiff'].apply(lambda x: x.replace('/home/brody9512', '') if x.startswith('/home/brody9512') else x)
     
-    if args.external:
-        test_df=df
-    else:
-        # Filter out rows where 'label' is not 0 or 1
-        df_filtered = df[df['label'].isin([0, 1])]
-    
-    # Splitting the filtered DataFrame into train, validation, and test DataFrames
-    train_df = df_filtered[df_filtered['Mode_1'] == 'train']
-    val_df = df_filtered[df_filtered['Mode_1'] == 'validation']
-    test_df = df_filtered[df_filtered['Mode_1'] == 'test']
-    
-    if not args.external:
-        train_dataset = CustomDataset_Test(train_df, training=True, apply_voi=False, hu_threshold=None, clipLimit=args.clahe, min_side=args.size)
-        val_dataset = CustomDataset_Test(val_df, training=False, apply_voi=False, hu_threshold=None, clipLimit=args.clahe, min_side=args.size)
-        test_dataset = CustomDataset_Test(test_df, training=False, apply_voi=False, hu_threshold=None, clipLimit=args.clahe, min_side=args.size)
-
-        batch_size_train = args.batch
-        batch_size_val = 1
-        batch_size_test = 1
-
-        train_loader = DataLoader(train_dataset, batch_size=batch_size_train, collate_fn=monai.data.utils.default_collate, shuffle=True, num_workers=0, worker_init_fn=model.seed_worker)
-        val_loader = DataLoader(val_dataset, batch_size=batch_size_val, collate_fn=monai.data.utils.default_collate, shuffle=False, num_workers=0, worker_init_fn=model.seed_worker)
-        test_loader = DataLoader(test_dataset, batch_size=batch_size_test, collate_fn=monai.data.utils.default_collate, shuffle=False, num_workers=0, worker_init_fn=model.seed_worker)
-    else:
-        batch_size_test=1
-        test_dataset = CustomDataset_Test(test_df, training=False, apply_voi=False, hu_threshold=None, clipLimit=args.clahe, min_side=args.size)
-        test_loader = DataLoader(test_dataset, batch_size=batch_size_test, collate_fn=monai.data.utils.default_collate, shuffle=False, num_workers=0, worker_init_fn=model.seed_worker)
-        
-    # Build your model 
-    
-    # (Optional) If multiple GPUs:
-    if torch.cuda.device_count() > 1:
-        model = torch.nn.DataParallel(model)
-        
-    # 6. Create optimizer (from `optim.py`)
-    optimizer = optim.create_optimizer(name="adam", net=model, lr=args.lr)
-    # or pass other arguments as needed, e.g.: 
-    # optimizer = create_optimizer(args.optim, model, args.lr)
-    
-    # 7. Define your loss function
-    criterion = losses.Uptask_Loss_Train()  
-    # You can pass any arguments you need for multi-task weighting, etc.
-
-    # 8. Training loop
-    best_val_loss = float('inf')
-    for epoch in range(args.epoch):
-        print(f"Epoch [{epoch+1}/{args.epoch}]")
-
-        # --- Train ---
-        train_loss = train_one_epoch(model, train_loader, criterion, optimizer, device)
-
-        # --- Validate ---
-        val_loss = validate_one_epoch(model, val_loader, criterion, device)
-
-        # Track best model
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            torch.save(model.state_dict(), f"{args.weight}_best.pth")
-            print("New best model saved!")
-
-    print("Training complete. Best validation loss:", best_val_loss)
 
 
 if __name__ == "__main__":

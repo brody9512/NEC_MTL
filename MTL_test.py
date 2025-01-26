@@ -32,48 +32,30 @@ import matplotlib.pyplot as plt
 import cv2 as cv
 import cv2
 import os
-import xml.etree.cElementTree as ET
 import random
 import os 
 from glob import glob
 import shutil
-import imutils
-from imutils.object_detection import non_max_suppression
-from PIL import Image
-import math
-from pandas import Series, DataFrame
-import csv
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import torch.nn as nn
 from torch.optim import lr_scheduler
 from tqdm import tqdm as tqdm
-import sys
 from tqdm import trange
-import seaborn as sn
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.metrics import roc_curve, auc
 import albumentations as albu
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data import DataLoader
-from torch.utils.data import Dataset as BaseDataset
-from torchvision import transforms
 import torch
 from albumentations.pytorch import ToTensorV2
 import segmentation_models_pytorch as smp
 from segmentation_models_pytorch.encoders import get_preprocessing_fn
 from torch.utils.data import Dataset
-import pydicom
-import pydicom.pixel_data_handlers
-import skimage.io
-import skimage.util
 import albumentations as A
 from sklearn.metrics import accuracy_score
-import tifffile
 import albumentations.augmentations.functional as AF
 import segmentation_models_pytorch as smp
-import functools
-from pydicom.pixel_data_handlers.util import apply_modality_lut, apply_voi_lut
 from torch.optim import lr_scheduler
 from tqdm import tqdm
 import argparse
@@ -99,16 +81,16 @@ parser.add_argument('--optim', type=str,default='adam')
 parser.add_argument('--epoch', type=int, default=125)
 
 parser.add_argument('--ver', type=int, default=6)
-parser.add_argument('--st', type=int,default=0)
-parser.add_argument('--de', type=int, default=0)
+# parser.add_argument('--st', type=int,default=0)
+# parser.add_argument('--de', type=int, default=0)
 
 parser.add_argument('--clahe', type=float, default=2.0)
 parser.add_argument('--batch', type=int, default=18)
 
 parser.add_argument('--size', type=int, default=512)
-parser.add_argument('--lr_', type=str, default='reduce', choices=['step', 'reduce'] )
-parser.add_argument('--lr__', type=float, default=0.0001)
-parser.add_argument('--lr___', type=int, default=25)
+parser.add_argument('--lr_type', type=str, default='reduce', choices=['step', 'reduce'] )
+parser.add_argument('--lr_startstep', type=float, default=0.0001)
+parser.add_argument('--lr_patience', type=int, default=25)
 
 parser.add_argument('--seg_weight', action='store_true', default=False)
 parser.add_argument('--seg_op', type=str,  default='non', choices=['non', 'seg_fast','seg_slow','seg_stop_fast','consist_1','consist_2'])
@@ -118,8 +100,8 @@ parser.add_argument('--infer', action='store_true')
 parser.add_argument('--external', action='store_true')
 parser.add_argument('--weight', type=str,default='ver7_densenet121_size_512_b18_sche_False_consist_False_valloss_ep120_30_60___best_model_')
 
-parser.add_argument('--cbam', action='store_true')
-parser.add_argument('--thr', type=float, default=0.24387007)
+# parser.add_argument('--cbam', action='store_true')
+parser.add_argument('--model_threshold', type=float, default=0.24387007)
 
 parser.add_argument('--half', action='store_true')
 
@@ -128,57 +110,50 @@ parser.add_argument('--layers', type=str,default='densenet121', choices=['densen
 
 parser.add_argument('--seed', type=int, default=42)
 
-#cd workspace/changhyun/nec_ch/v1_pneumoperiT_code/ && python3 MTL_external_240206.py --gpu 1 --layers densenet169  --external  --weight  0211_densenet169_non_ep200_lr_reduce_size_512_b18_cbam_False_clip_0.5_98.5_rotate_30.0_rbc_b0.05_c0.2_ela_True_alpha15.0_sigma0.75_alaff0.45_gausTrue_0.0_10.0_cordrop_False_half_False_3   --thr 0.6588932275 --feature 0331   &
+# how to run: cd workspace/changhyun/nec_ch/v1_pneumoperiT_code/ && python3 MTL_external_240206.py --gpu 1 --layers densenet169  --external  --weight  0211_densenet169_non_ep200_lr_reduce_size_512_b18_cbam_False_clip_0.5_98.5_rotate_30.0_rbc_b0.05_c0.2_ela_True_alpha15.0_sigma0.75_alaff0.45_gausTrue_0.0_10.0_cordrop_False_half_False_3   --thr 0.6588932275 --feature 0331   &
 
 
 #parse_args()를 통해 parser객체의 인자들 파싱
 args = parser.parse_args()
 
 
-path_=args.path
-layers=args.layers
-gpu=args.gpu
-optim=args.optim
-EPOCHS = args.epoch
+# path = args.path
+# layers = args.layers
+# gpu = args.gpu
+# optim = args.optim
+# EPOCHS = args.epoch
 
-ver = args.ver
-st = args.st
-de = args.de
+# ver = args.ver
+# st = args.st ## delete, no need
+# de = args.de ## delete, no need
 
-clipLimit_=args.clahe
-train_batch=args.batch
+# clipLimit = args.clahe_cliplimit
+# train_batch=args.batch
 
-min_side_=args.size
-lr_=args.lr_
-lr__=args.lr__
-lr_p=args.lr___
+# min_side_=args.size
+# lr_type=args.lr_
+# lr_startstep=args.lr__
+# lr_patience=args.lr___
 
-seg_weight_= args.seg_weight
-feature=args.feature
+# seg_weight_= args.seg_weight
+# feature=args.feature
 
-infer=args.infer
-external=args.external
-weight_=args.weight
+# infer=args.infer
+# external=args.external
+# weight_=args.weight
 
-cbam_ = args.cbam
-thr = args.thr
+# cbam_ = args.cbam ## delete, no need
+# model_threshold = args.thr
 
-half= args.half
+# half= args.half
 
-seed_=args.seed
+# seed =args.seed
 
 
 
 
 change_epoch = [0, 15, 28, 40, 55, 68, 75]
-#ratio =[[1,9, 9], [2,8, 8],[35,65, 65],[5,5,5] ,[65,35, 35], [8,2,2], [9,1, 1]]
 ratio = [[5, 5], [5, 5],[5, 5],[1,9] ,[1, 9], [1,9], [1, 9]]
-
-# #seg천천히 죽이기
-# ratio = [[1, 9], [15, 85],[20, 80],[30,70] ,[65, 35], [8,2], [9, 1]]
-
-# #seg빨리 죽이기
-# ratio = [[1, 9], [2, 8],[65, 35],[5,5] ,[35, 65], [8,2], [9, 1]]
 
 if len(ratio[0]) == 3:
     consist_ = True
@@ -503,23 +478,23 @@ class Dice_BCE_Loss(torch.nn.Module):
 
         return self.dice_weight*dice_loss + self.bce_weight*bce_loss
 
-class Consistency_Loss(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.L2_loss  = torch.nn.MSELoss()
-        self.maxpool  = torch.nn.MaxPool2d(kernel_size=16, stride=16, padding=0)
-        self.avgpool  = torch.nn.AvgPool2d(kernel_size=16, stride=16, padding=0)
+# class Consistency_Loss(torch.nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#         self.L2_loss  = torch.nn.MSELoss()
+#         self.maxpool  = torch.nn.MaxPool2d(kernel_size=16, stride=16, padding=0)
+#         self.avgpool  = torch.nn.AvgPool2d(kernel_size=16, stride=16, padding=0)
 
-    def forward(self, y_cls, y_seg):
-        y_cls = torch.sigmoid(y_cls)  # (B, C)
-        y_seg = torch.sigmoid(y_seg)  # (B, C, H, W)
+#     def forward(self, y_cls, y_seg):
+#         y_cls = torch.sigmoid(y_cls)  # (B, C)
+#         y_seg = torch.sigmoid(y_seg)  # (B, C, H, W)
 
-        # We have to adjust the segmentation pred depending on classification pred
-        # ResNet50 uses four 2x2 maxpools and 1 global avgpool to extract classification pred. that is the same as 16x16 maxpool and 16x16 avgpool
-        y_seg = self.avgpool(self.maxpool(y_seg)).flatten(start_dim=1, end_dim=-1)  # (B, C)
-        loss  = self.L2_loss(y_seg, y_cls)
+#         # We have to adjust the segmentation pred depending on classification pred
+#         # ResNet50 uses four 2x2 maxpools and 1 global avgpool to extract classification pred. that is the same as 16x16 maxpool and 16x16 avgpool
+#         y_seg = self.avgpool(self.maxpool(y_seg)).flatten(start_dim=1, end_dim=-1)  # (B, C)
+#         loss  = self.L2_loss(y_seg, y_cls)
 
-        return loss
+#         return loss
     
 class Uptask_Loss(torch.nn.Module):
     def __init__(self):
@@ -527,7 +502,7 @@ class Uptask_Loss(torch.nn.Module):
         self.loss_cls     = torch.nn.BCEWithLogitsLoss()
         self.loss_seg     = Dice_BCE_Loss()
         self.loss_rec     = torch.nn.L1Loss()
-        self.loss_consist = Consistency_Loss()
+        # self.loss_consist = Consistency_Loss()
 
 
     def forward(self, cls_pred=None, cls_gt=None):
@@ -545,49 +520,49 @@ def create_optim(name, net, lr):
 
     return optimizer
 
-import torch.nn.functional as F
-class ChannelAttention(nn.Module):
-    def __init__(self, in_channels, reduction_ratio=16):
-        super(ChannelAttention, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
+# import torch.nn.functional as F
+# class ChannelAttention(nn.Module):
+#     def __init__(self, in_channels, reduction_ratio=16):
+#         super(ChannelAttention, self).__init__()
+#         self.avg_pool = nn.AdaptiveAvgPool2d(1)
+#         self.max_pool = nn.AdaptiveMaxPool2d(1)
         
-        # Use MLP with one hidden layer to get channel attention scores
-        self.fc = nn.Sequential(
-            nn.Conv2d(in_channels, in_channels // reduction_ratio, 1, bias=False),
-            nn.ReLU(),
-            nn.Conv2d(in_channels // reduction_ratio, in_channels, 1, bias=False)
-        )
+#         # Use MLP with one hidden layer to get channel attention scores
+#         self.fc = nn.Sequential(
+#             nn.Conv2d(in_channels, in_channels // reduction_ratio, 1, bias=False),
+#             nn.ReLU(),
+#             nn.Conv2d(in_channels // reduction_ratio, in_channels, 1, bias=False)
+#         )
     
-    def forward(self, x):
-        avg_out = self.fc(self.avg_pool(x))
-        max_out = self.fc(self.max_pool(x))
-        out = avg_out + max_out
-        return torch.sigmoid(out)
+#     def forward(self, x):
+#         avg_out = self.fc(self.avg_pool(x))
+#         max_out = self.fc(self.max_pool(x))
+#         out = avg_out + max_out
+#         return torch.sigmoid(out)
 
-class SpatialAttention(nn.Module):
-    def __init__(self, kernel_size=7):
-        super(SpatialAttention, self).__init__()
-        padding = kernel_size // 2
-        self.conv1 = nn.Conv2d(2, 1, kernel_size, padding=padding, bias=False)
+# class SpatialAttention(nn.Module):
+#     def __init__(self, kernel_size=7):
+#         super(SpatialAttention, self).__init__()
+#         padding = kernel_size // 2
+#         self.conv1 = nn.Conv2d(2, 1, kernel_size, padding=padding, bias=False)
     
-    def forward(self, x):
-        avg_out = torch.mean(x, dim=1, keepdim=True)
-        max_out, _ = torch.max(x, dim=1, keepdim=True)
-        x = torch.cat([avg_out, max_out], dim=1)
-        x = self.conv1(x)
-        return torch.sigmoid(x)
+#     def forward(self, x):
+#         avg_out = torch.mean(x, dim=1, keepdim=True)
+#         max_out, _ = torch.max(x, dim=1, keepdim=True)
+#         x = torch.cat([avg_out, max_out], dim=1)
+#         x = self.conv1(x)
+#         return torch.sigmoid(x)
 
-class CBAMBlock(nn.Module):
-    def __init__(self, in_channels, reduction_ratio=16, kernel_size=7):
-        super(CBAMBlock, self).__init__()
-        self.channel_attention = ChannelAttention(in_channels, reduction_ratio)
-        self.spatial_attention = SpatialAttention(kernel_size)
+# class CBAMBlock(nn.Module):
+#     def __init__(self, in_channels, reduction_ratio=16, kernel_size=7):
+#         super(CBAMBlock, self).__init__()
+#         self.channel_attention = ChannelAttention(in_channels, reduction_ratio)
+#         self.spatial_attention = SpatialAttention(kernel_size)
     
-    def forward(self, x):
-        x = self.channel_attention(x) * x
-        x = self.spatial_attention(x) * x
-        return x
+#     def forward(self, x):
+#         x = self.channel_attention(x) * x
+#         x = self.spatial_attention(x) * x
+#         return x
 
 
 aux_params=dict(
@@ -735,24 +710,7 @@ optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
 from sklearn.metrics import accuracy_score
 from monai.metrics import DiceMetric
-# from pytorch_grad_cam import GradCAM, ScoreCAM, GradCAMPlusPlus, AblationCAM, XGradCAM, EigenCAM
-# from pytorch_grad_cam.utils.image import show_cam_on_image
 
-# class ModelWrapper(nn.Module):
-#     def __init__(self, model):
-#         super(ModelWrapper, self).__init__()
-#         self.model = model
-
-#     def forward(self, x):
-#         _, output = self.model(x)
-#         return output
-
-# model_ = ModelWrapper(MultiTaskModel().to(DEVICE))
-
-# #model_.train()
-
-# target_layer =[model_.model.base_model.encoder.layer4[-1]]
-# grad_cam = GradCAM(model=model_, target_layers=target_layer, use_cuda=True)
 
 
 def calculate_auc_ci(y_true, y_probs, n_bootstraps=1000, alpha=0.95):
@@ -1055,6 +1013,28 @@ plot_confusion_matrix(cm, target_names,target_names_1,save_path=os.path.join(sav
 
 
 
+### WE DONT USE GRADCAM and SEE IF IT WORKS
+'''
+# from pytorch_grad_cam import GradCAM, ScoreCAM, GradCAMPlusPlus, AblationCAM, XGradCAM, EigenCAM
+# from pytorch_grad_cam.utils.image import show_cam_on_image
+
+# class ModelWrapper(nn.Module):
+#     def __init__(self, model):
+#         super(ModelWrapper, self).__init__()
+#         self.model = model
+
+#     def forward(self, x):
+#         _, output = self.model(x)
+#         return output
+
+# model_ = ModelWrapper(MultiTaskModel().to(DEVICE))
+
+# #model_.train()
+
+# target_layer =[model_.model.base_model.encoder.layer4[-1]]
+# grad_cam = GradCAM(model=model_, target_layers=target_layer, use_cuda=True)
+
+
 
 # Gradcam
 from pytorch_grad_cam import GradCAM, ScoreCAM, GradCAMPlusPlus, AblationCAM, XGradCAM, EigenCAM
@@ -1207,3 +1187,4 @@ for i ,data in enumerate(test_loader):
     plt.savefig(os.path.join(save_dir, f"{dcm_name[0].split('.')[0]}_ai.png"), bbox_inches='tight', pad_inches=0.15)
     plt.close()
 ###
+'''

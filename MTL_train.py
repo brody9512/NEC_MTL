@@ -1,40 +1,27 @@
-
-
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2 as cv
 import cv2
 import os
-import xml.etree.cElementTree as ET
 import random
 import os 
 from glob import glob
 import shutil
-import imutils
-from imutils.object_detection import non_max_suppression
 from PIL import Image
 import math
-from pandas import Series, DataFrame
-import csv
 import pandas as pd
-from sklearn.model_selection import train_test_split
 import torch.nn as nn
 from torch.optim import lr_scheduler
 from tqdm import tqdm as tqdm
-import sys
 from tqdm import trange
-import seaborn as sn
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.metrics import roc_curve, auc
 import albumentations as albu
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data import DataLoader
-from torch.utils.data import Dataset as BaseDataset
-from torchvision import transforms
 import torch
 from albumentations.pytorch import ToTensorV2
 import segmentation_models_pytorch as smp
-from segmentation_models_pytorch.encoders import get_preprocessing_fn
 from torch.utils.data import Dataset
 import pydicom
 import pydicom.pixel_data_handlers
@@ -43,9 +30,7 @@ import skimage.util
 import albumentations as A
 from sklearn.metrics import accuracy_score
 import tifffile
-import albumentations.augmentations.functional as AF
 import segmentation_models_pytorch as smp
-import functools
 from pydicom.pixel_data_handlers.util import apply_modality_lut, apply_voi_lut
 from torch.optim import lr_scheduler
 from tqdm import tqdm
@@ -58,7 +43,6 @@ ssl._create_default_https_context = ssl._create_unverified_context
 import argparse
 import itertools
 import datetime
-import re
 from sklearn.metrics import f1_score, accuracy_score, recall_score, precision_score, roc_auc_score
 import matplotlib.colors as mcolors
 
@@ -71,103 +55,69 @@ pydicom.config.image_handlers = [gdcm_handler]
 parser = argparse.ArgumentParser(description='Arugment 설명')#parser객체 생성
 
 #parser에 인자 추가시키기, start, end 인자 추가
-parser.add_argument('--path', type=str, default='/workspace/changhyun/nec_ch/csv_xlxs/pneumoperiT_modified_n3861_final_20240206_pch.csv')
-
-#parser.add_argument('--name', type=str)
+# Basic I/O and Paths
+parser.add_argument('--path', type=str, default='/workspace/changhyun/nec_ch/csv_xlxs/pneumoperiT_modified_n3861_final_20240206_pch.csv', help='/path/to/your/training_csv.csv')
 parser.add_argument('--gpu', type=str,default='2')
+parser.add_argument('--infer', action='store_true', help='Inference mode only')
+parser.add_argument('--external', action='store_true', help='Use external data only? (Testing on external set)')
 
-parser.add_argument('--optim', type=str,default='adam')
-
+# Model & Training
+parser.add_argument('--optim', type=str,default='adam', help='Optimizer type.')
 parser.add_argument('--epoch', type=int, default=120)
-
-parser.add_argument('--ver', type=int, default=6)
-
-parser.add_argument('--st', type=int,default=0)
-parser.add_argument('--de', type=int, default=0)
-
-parser.add_argument('--clahe', type=float, default=2.0)
-
-
-parser.add_argument('--batch', type=int, default=18)
-
-parser.add_argument('--size', type=int, default=512)
-parser.add_argument('--lr_', type=str, default='reduce', choices=['step', 'reduce'] )
-parser.add_argument('--lr__', type=float, default=0.00005)
-parser.add_argument('--lr___', type=int, default=12)
-
-parser.add_argument('--seg_weight', action='store_true', default=False)
-parser.add_argument('--seg_op', type=str,  default='non', choices=['non', 'seg_fast','seg_slow','seg_stop_fast_2','seg_stop_fast_0','seg_stop_fast_1','consist_0','consist_1','consist'])
-
-parser.add_argument('--feature', type=str,default='_')
-parser.add_argument('--infer', action='store_true')
-parser.add_argument('--external', action='store_true')
-parser.add_argument('--weight', type=str,default='ver7_densenet121_size_512_b18_sche_False_consist_False_valloss_ep120_30_60___best_model_')
-
-parser.add_argument('--cbam', action='store_true')
-parser.add_argument('--half', action='store_true')
-
-
+parser.add_argument('--version', type=int, default=6)
 parser.add_argument('--layers', type=str,default='densenet121', choices=['densenet121', 'densenet169','densenet201','densenet161','resnext50_32x4d','se_resnet50','se_resnet101','se_resnext50_32x4d', 'se_resnext101_32x4d','resnext101_32x8d', 'inceptionresnetv2', 'mit_b0','mit_b1','mit_b2','mit_b3','resnet101','resnet152','vgg16','vgg19','inceptionv4','mobilenet_v2','resnet50','resnet101','resnext50_32x4d','resnext101_32x4d','inceptionv4','efficientnet-b3','efficientnet-b4','efficientnet-b5','efficientnet-b6','vgg16','vgg19','resnext101_32x8d'])
-
-
-
-
-parser.add_argument('--clip_min', type=float, default=0.5)
-parser.add_argument('--clip_max', type=float, default=99.5)
-
-parser.add_argument('--rotate_angle', type=float, default=30) ### 30
-parser.add_argument('--rotate_p', type=float, default=0.8)   ###  ??
-
-parser.add_argument('--rbc_b', type=float, default=0.2)
-parser.add_argument('--rbc_c', type=float, default=0.2)
-parser.add_argument('--rbc_p', type=float, default=0.5)
-
-parser.add_argument('--ela_t_f', action='store_true')
-parser.add_argument('--ela_alpha', type=float, default=30)
-parser.add_argument('--ela_sigma', type=float, default=1.5)
-parser.add_argument('--ela_alpha_aff', type=float, default=0.9)
-parser.add_argument('--ela_p', type=float, default=0.25)# 월래 0.25
-
-parser.add_argument('--gaus_t_f', action='store_true', default=True)
-parser.add_argument('--gaus_min', type=float, default=10.0)
-parser.add_argument('--gaus_max', type=float, default=50.0)
-parser.add_argument('--gaus_p', type=float, default=0.5)
-
-
-
-parser.add_argument('--cordrop_t_f', action='store_true')
-
-parser.add_argument('--Horizontal_p', type=float, default=0.25)
-parser.add_argument('--Horizontal_t_f', action='store_true')
-
-
-parser.add_argument('--gamma_min', type=float, default=80.0)
-parser.add_argument('--gamma_max', type=float, default=120.0)
-parser.add_argument('--gamma_p', type=float, default=0.5)
-parser.add_argument('--gamma_t_f', action='store_true')
-
-
-parser.add_argument('--sizecrop_min_r', type=float, default=0.8)
-parser.add_argument('--sizecrop_p', type=float, default=0.5)
-parser.add_argument('--sizecrop_t_f', action='store_true')
-
-parser.add_argument('--resizecrop_p', type=float, default=0.5)
-parser.add_argument('--resizecrop_t_f', action='store_true')
-
-
-parser.add_argument('--thr_t_f', action='store_true')
-parser.add_argument('--thr', type=float, default=0.24387007)
-
-parser.add_argument('--epoch_loss', type=str, default='epoch_loss', choices=['epoch_class_loss', 'epoch_loss'] )
-parser.add_argument('--k_size', type=int, default=8, choices=[2,4,8,16,32] )
-
-parser.add_argument('--loss_type', type=str, default='bc_di', choices=['bc_di','bc_iou','bc_tv','fo_di','fo_tv','fo_iou'] )
-
-parser.add_argument('--clahe_limit', type=int, default=8)
-
+parser.add_argument('--batch', type=int, default=18, help='Train batch size.')
+parser.add_argument('--size', type=int, default=512, help='Target image size.')
+parser.add_argument('--lr_type', type=str, default='reduce', choices=['step', 'reduce'] )
+parser.add_argument('--lr_startstep', type=float, default=0.00005)
+parser.add_argument('--lr_patience', type=int, default=12)
+parser.add_argument('--half', action='store_true')
+parser.add_argument('--weight', type=str,default='ver7_densenet121_size_512_b18_sche_False_consist_False_valloss_ep120_30_60___best_model_') ## wouldn't this be affected when refactored?
 parser.add_argument('--seed', type=int, default=42)
 
-#기존예시  
+# Classification & Segmentation Options
+parser.add_argument('--seg_weight', action='store_true', default=False)
+parser.add_argument('--seg_op', type=str,  default='non', choices=['non', 'seg_fast','seg_slow','seg_stop_fast_2','seg_stop_fast_0','seg_stop_fast_1','consist_0','consist_1','consist'])
+parser.add_argument('--feature', type=str,default='_')
+parser.add_argument('--epoch_loss', type=str, default='epoch_loss', choices=['epoch_class_loss', 'epoch_loss'], help='Which loss to track for best model checkpoint?')
+
+# Data augmentations: Cropping, clipping, etc.
+# parser.add_argument('--st', type=int,default=0)
+# parser.add_argument('--de', type=int, default=0)
+parser.add_argument('--clahe_cliplimit', type=float, default=2.0)    
+parser.add_argument('--clip_min', type=float, default=0.5)
+parser.add_argument('--clip_max', type=float, default=99.5)
+parser.add_argument('--clahe_limit', type=int, default=8)    
+parser.add_argument('--rotate_angle', type=float, default=30) 
+parser.add_argument('--rotate_percentage', type=float, default=0.8)
+parser.add_argument('--rbc_brightness', type=float, default=0.2)
+parser.add_argument('--rbc_contrast', type=float, default=0.2)
+parser.add_argument('--rbc_percentage', type=float, default=0.5)
+parser.add_argument('--elastic_truefalse', action='store_true')
+parser.add_argument('--elastic_alpha', type=float, default=30)
+parser.add_argument('--elastic_sigma', type=float, default=1.5)
+parser.add_argument('--elastic_alpha_affine', type=float, default=0.9)
+parser.add_argument('--ela_percentage', type=float, default=0.25)
+parser.add_argument('--gaussian_truefalse', action='store_true', default=True)
+parser.add_argument('--gaussian_min', type=float, default=10.0)
+parser.add_argument('--gaussian_max', type=float, default=50.0)
+parser.add_argument('--gaussian_percentage', type=float, default=0.5)
+parser.add_argument('--cordrop_truefalse', action='store_true')
+parser.add_argument('--Horizontal_percentage', type=float, default=0.25)
+parser.add_argument('--Horizontal_truefalse', action='store_true')
+parser.add_argument('--gamma_min', type=float, default=80.0)
+parser.add_argument('--gamma_max', type=float, default=120.0)
+parser.add_argument('--gamma_percentage', type=float, default=0.5)
+parser.add_argument('--gamma_truefalse', action='store_true')
+parser.add_argument('--sizecrop_min_r', type=float, default=0.8)
+parser.add_argument('--sizecrop_percentage', type=float, default=0.5)
+parser.add_argument('--sizecrop_truefalse', action='store_true')
+parser.add_argument('--resizecrop_percentage', type=float, default=0.5)
+parser.add_argument('--resizecrop_truefalse', action='store_true')
+parser.add_argument('--model_threshold_truefalse', action='store_true')
+parser.add_argument('--model_threshold', type=float, default=0.24387007)
+
+#기존예시 on how to run
 # cd workspace/changhyun/nec_ch/v1_pneumoperiT_code/ && python3 MTL_train_infer_clsloss_pre_ori_240206.py --size 1024  --batch 6  --gpu 4  --rotate_angle 30 --rotate_p 0.8  --layers densenet169 --epoch 200  --clip_min 0.5  --clip_max 98.5  --rbc_b 0.05 --rbc_c 0.2 --ela_t_f   --ela_alpha 15 --ela_sigma 0.75 --ela_alpha_aff 0.45  --gaus_t_f  --gaus_min 0  --gaus_max 10 --epoch_loss epoch_class_loss  --feature A18  --seg_op consist &
 
 
@@ -176,62 +126,60 @@ parser.add_argument('--seed', type=int, default=42)
 args = parser.parse_args()
 # path_=args.path
 # layers=args.layers
-## print('layers :',layers)
 # gpu=args.gpu
 # optim=args.optim
 # EPOCHS = args.epoch
-# ver = args.ver
-# st = args.st
-# de = args.de
-# clipLimit_=args.clahe
+# ver = args.ver ## version
+    # st = args.st ## delete
+    # de = args.de ## delete
+# clipLimit_=args.clahe_cliplimit # clahe_cliplimit 기법의 limit (사진을 limit을 주면서 자르기 때문에 cliplimit으로 함)
 # train_batch=args.batch
 # min_side_=args.size
-# lr_=args.lr_
-# lr__=args.lr__
-# lr_p=args.lr___
+    # lr_=args.lr_ ## lr_type
+    # lr__=args.lr__ ## lr_startstep
+    # lr_p=args.lr___ ## lr_patience
 # seg_op= args.seg_op
 # seg_weight_= args.seg_weight
 # feature=args.feature
 # infer=args.infer
 # external=args.external
 # weight_=args.weight
-# cbam_ = args.cbam
+
 # half= args.half
-# thr_t_f=args.thr_t_f
-# thr=args.thr
+    # thr_t_f=args.thr_t_f ## model_threshold_truefalse
+    # thr=args.thr ## model_threshold
 # clip_min=args.clip_min
 # clip_max=args.clip_max
 # rotate_angle = args.rotate_angle
-# rotate_p = args.rotate_p
-# rbc_b=args.rbc_b
-# rbc_c=args.rbc_c
-# rbc_p=args.rbc_p
-# ela_t_f=args.ela_t_f
-# ela_alpha=args.ela_alpha
-# ela_sigma=args.ela_sigma
-# ela_alpha_aff=args.ela_alpha_aff
-# ela_p=args.ela_p
-# gaus_t_f=args.gaus_t_f
+    # rotate_p = args.rotate_p ## rotate_percentage
+    # rbc_b=args.rbc_brightness
+    # rbc_c=args.rbc_contrast
+    # rbc_p=args.rbc_percentage
+    # ela_t_f=args.ela_t_f ## elastic_truefalse
+    # ela_alpha=args.ela_alpha ## elastic_alpha
+    # ela_sigma=args.ela_sigma ## elastic_sigma
+    # ela_alpha_aff=args.ela_alpha_aff ## elastic_alpha_affine
+    # ela_p=args.ela_p ## percentage
+    # gaus_t_f=args.gaus_t_f ## gaus_truefalse
 # gaus_min=args.gaus_min
 # gaus_max=args.gaus_max
-# gaus_p=args.gaus_p
+    # gaus_p=args.gaus_p ## gaus_percentage
 # cordrop_t_f=args.cordrop_t_f
-# Horizontal_t_f=args.Horizontal_t_f
-# Horizontal_p = args.Horizontal_p
+    # Horizontal_t_f=args.Horizontal_t_f
+    # Horizontal_p = args.Horizontal_p
 # gamma_min=args.gamma_min
 # gamma_max=args.gamma_max
-# gamma_p=args.gamma_p
-# gamma_t_f=args.gamma_t_f
+    # gamma_p=args.gamma_p
+    # gamma_t_f=args.gamma_t_f
 # sizecrop_min_r=args.sizecrop_min_r
 # sizecrop_p=args.sizecrop_p
 # sizecrop_t_f=args.sizecrop_t_f
-
 # resizecrop_p=args.resizecrop_p
 # resizecrop_t_f=args.resizecrop_t_f
 # epoch_loss_ =args.epoch_loss
 # k_size_=args.k_size
 # loss_type_=args.loss_type
-# clahe_l = args.clahe_limit
+    # clahe_l = args.clahe_limit ## clahe_limit
 # seed_=args.seed
 
 # 현재 날짜와 시간을 YYYYMMDD_HHMM 형식으로 가져옵니다.
@@ -247,26 +195,23 @@ change_epoch = [0, 100, 120, 135, 160, 170, 175] ## [0, 100, 120, 130, 160, 170,
 
 #cls_weight, seg_weight, consist_weight = weights
 
-if seg_op == 'seg_fast':
-    ratio = [[1, 0], [1, 0],[1, 0],[1, 0] ,[1, 0], [1, 0], [1, 0]]
-    
-elif  seg_op == 'seg_slow':
-    ratio = [[5, 5], [5, 5],[5, 5],[3,7] ,[3, 7],[3, 7],[3, 7]]
-elif  seg_op == 'consist_0':
-    ratio =[[5,5, 0], [5,5, 0],[5,5, 0],[5,0,5] ,[5,0,5],[5,0,5],[5,0,5]]
-elif  seg_op == 'consist_1':
-    ratio =[[1,9, 5], [2,8, 5],[35,65, 50],[5,5,5] ,[65,35, 50], [8,2,5], [9,1, 5]]
-elif  seg_op == 'consist':
-    ratio =[[5,5, 5], [5,5, 5],[5,5, 5],[5,5,5] ,[5,5, 5], [5,5,5], [5,5, 5]]
-elif  seg_op == 'seg_stop_fast_0':
-    ratio = [[5, 5], [5, 5],[5, 5],[7,3] ,[7, 3],[7, 3],[7, 3]]
-elif  seg_op == 'seg_stop_fast_1':
-    ratio = [[5, 5], [5, 5],[5, 5],[8,2] ,[8, 2],[8, 2],[8, 2]]
-elif  seg_op == 'seg_stop_fast_2':
-    ratio = [[5, 5], [5, 5],[5, 5],[9,1] ,[9, 1],[9, 1],[9, 1]]
+def get_segop_ratios(seg_op):
+    ratio_map = { ## 학습을 효율화 할 수 있게 weight을 조정해본 것 --> 없애도됨. 단지 나중에 이해하고 없애기
+        'seg_fast': [[1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [1, 0]],
+        'seg_slow': [[5, 5], [5, 5], [5, 5], [3, 7], [3, 7], [3, 7], [3, 7]],
+        'consist_0': [[5, 5, 0], [5, 5, 0], [5, 5, 0], [5, 0, 5], [5, 0, 5], [5, 0, 5], [5, 0, 5]],
+        'consist_1': [[1, 9, 5], [2, 8, 5], [35, 65, 50], [5, 5, 5], [65, 35, 50], [8, 2, 5], [9, 1, 5]],
+        'consist': [[5, 5, 5], [5, 5, 5], [5, 5, 5], [5, 5, 5], [5, 5, 5], [5, 5, 5], [5, 5, 5]],
+        'seg_stop_fast_0': [[5, 5], [5, 5], [5, 5], [7, 3], [7, 3], [7, 3], [7, 3]],
+        'seg_stop_fast_1': [[5, 5], [5, 5], [5, 5], [8, 2], [8, 2], [8, 2], [8, 2]],
+        'seg_stop_fast_2': [[5, 5], [5, 5], [5, 5], [9, 1], [9, 1], [9, 1], [9, 1]],
+        'non': [[5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5]]
+    }
+    ratio = ratio_map.get(seg_op, None)
 
-elif  seg_op == 'non':
-    ratio = [[5, 5], [5, 5],[5, 5],[5, 5], [5, 5],[5, 5],[5, 5]]
+    return ratio
+
+ratio = get_segop_ratios(args.seg_op)
 
 
 
@@ -993,43 +938,43 @@ class Dice_BCE_Loss(torch.nn.Module):
 
 
 
-# '''consist loss '''
-class Consistency_Loss(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
+# # '''consist loss '''
+# class Consistency_Loss(torch.nn.Module):
+#     def __init__(self):
+#         super().__init__()
         
-        k_size=k_size_ ## 만액에 size 1024에 k_size= 16이라면!
-        final_size = int((min_side_ / k_size** 2))**2  #root 가하는 건 math.sqrt(min_side_)
-        self.L2_loss  = torch.nn.MSELoss()
-        self.maxpool  = torch.nn.MaxPool2d(kernel_size=k_size, stride=k_size, padding=0)
-        self.avgpool  = torch.nn.AvgPool2d(kernel_size=k_size, stride=k_size, padding=0)
-        self.fc = nn.Linear(1,final_size)  # 채널 수를 1에서 16로 변경 
-        #min_side =1024 , kernel_size = 8    final_size>> 256 
-        #min_side =1024 , kernel_size = 16   final_size>> 16
+#         k_size=k_size_ ## 만액에 size 1024에 k_size= 16이라면!
+#         final_size = int((min_side_ / k_size** 2))**2  #root 가하는 건 math.sqrt(min_side_)
+#         self.L2_loss  = torch.nn.MSELoss()
+#         self.maxpool  = torch.nn.MaxPool2d(kernel_size=k_size, stride=k_size, padding=0)
+#         self.avgpool  = torch.nn.AvgPool2d(kernel_size=k_size, stride=k_size, padding=0)
+#         self.fc = nn.Linear(1,final_size)  # 채널 수를 1에서 16로 변경 
+#         #min_side =1024 , kernel_size = 8    final_size>> 256 
+#         #min_side =1024 , kernel_size = 16   final_size>> 16
 
-    def forward(self, y_cls, y_seg):
+#     def forward(self, y_cls, y_seg):
         
-        # print('consis_y_cls.shape:',y_cls.shape)
-        # print('consis_y_seg.shape:',y_seg.shape)
+#         # print('consis_y_cls.shape:',y_cls.shape)
+#         # print('consis_y_seg.shape:',y_seg.shape)
         
-        y_cls = torch.sigmoid(y_cls)  # (B, C)
-        y_seg = torch.sigmoid(y_seg)  # (B, C, H, W)
+#         y_cls = torch.sigmoid(y_cls)  # (B, C)
+#         y_seg = torch.sigmoid(y_seg)  # (B, C, H, W)
         
-        y_cls = self.fc(y_cls)
+#         y_cls = self.fc(y_cls)
 
-        # print('sig_y_seg.shape:',y_seg.shape) #sig_y_seg.shape: torch.Size([6, 1, 1024, 1024])        
-        # print('sig_y_cls.shape:',y_cls.shape) # sig_y_cls.shape: torch.Size([6, 16])
+#         # print('sig_y_seg.shape:',y_seg.shape) #sig_y_seg.shape: torch.Size([6, 1, 1024, 1024])        
+#         # print('sig_y_cls.shape:',y_cls.shape) # sig_y_cls.shape: torch.Size([6, 16])
 
-        # We have to adjust the segmentation pred depending on classification pred
-        # ResNet50 uses four 2x2 maxpools and 1 global avgpool to extract classification pred. that is the same as 16x16 maxpool and 16x16 avgpool
-        y_seg = self.avgpool(self.maxpool(y_seg)).flatten(start_dim=1, end_dim=-1)  # (B, C)
+#         # We have to adjust the segmentation pred depending on classification pred
+#         # ResNet50 uses four 2x2 maxpools and 1 global avgpool to extract classification pred. that is the same as 16x16 maxpool and 16x16 avgpool
+#         y_seg = self.avgpool(self.maxpool(y_seg)).flatten(start_dim=1, end_dim=-1)  # (B, C)
         
-        # print('L2_loss_seg.shape:',y_seg.shape) # L2_loss_seg.shape: torch.Size([6, 16])
-        # print('L2_loss_cls.shape:',y_cls.shape) ## L2_loss_cls.shape: torch.Size([6, 16])
+#         # print('L2_loss_seg.shape:',y_seg.shape) # L2_loss_seg.shape: torch.Size([6, 16])
+#         # print('L2_loss_cls.shape:',y_cls.shape) ## L2_loss_cls.shape: torch.Size([6, 16])
         
-        loss  = self.L2_loss(y_seg, y_cls)
+#         loss  = self.L2_loss(y_seg, y_cls)
 
-        return loss
+#         return loss
 
 
 
@@ -1040,7 +985,7 @@ class Uptask_Loss(torch.nn.Module):
         self.loss_cls = None
         self.loss_seg = None
         self.loss_rec = torch.nn.L1Loss()
-        self.loss_consist = Consistency_Loss()
+        # self.loss_consist = Consistency_Loss()
         
         # Weights for each component of the loss
         self.cls_weight = cls_weight
@@ -1626,24 +1571,6 @@ optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
 from sklearn.metrics import accuracy_score
 from monai.metrics import DiceMetric
-# from pytorch_grad_cam import GradCAM, ScoreCAM, GradCAMPlusPlus, AblationCAM, XGradCAM, EigenCAM
-# from pytorch_grad_cam.utils.image import show_cam_on_image
-
-# class ModelWrapper(nn.Module):
-#     def __init__(self, model):
-#         super(ModelWrapper, self).__init__()
-#         self.model = model
-
-#     def forward(self, x):
-#         _, output = self.model(x)
-#         return output
-
-# model_ = ModelWrapper(MultiTaskModel().to(DEVICE))
-
-# #model_.train()
-
-# target_layer =[model_.model.base_model.encoder.layer4[-1]]
-# grad_cam = GradCAM(model=model_, target_layers=target_layer, use_cuda=True)
 
 
 def calculate_auc_ci(y_true, y_probs, n_bootstraps=1000, alpha=0.95):
@@ -1972,7 +1899,29 @@ print("ROC curve (area = %0.2f)" % auc(fpr, tpr),'\n')
 print( f'weight : \n{name}\n' )
 print(f'Thresold Value : {thr_val}')
 
-# Gradcam
+
+'''
+Gradcam part in between codes
+# from pytorch_grad_cam import GradCAM, ScoreCAM, GradCAMPlusPlus, AblationCAM, XGradCAM, EigenCAM
+# from pytorch_grad_cam.utils.image import show_cam_on_image
+
+# class ModelWrapper(nn.Module):
+#     def __init__(self, model):
+#         super(ModelWrapper, self).__init__()
+#         self.model = model
+
+#     def forward(self, x):
+#         _, output = self.model(x)
+#         return output
+
+# model_ = ModelWrapper(MultiTaskModel().to(DEVICE))
+
+# #model_.train()
+
+# target_layer =[model_.model.base_model.encoder.layer4[-1]]
+# grad_cam = GradCAM(model=model_, target_layers=target_layer, use_cuda=True)
+
+# Gradcam where it fully starts
 from pytorch_grad_cam import GradCAM, ScoreCAM, GradCAMPlusPlus, AblationCAM, XGradCAM, EigenCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
 
@@ -2160,22 +2109,4 @@ for i ,data in enumerate(test_loader):
     #plt.show()
     plt.savefig(os.path.join(save_dir,f"z_label{int(labels.item())}_pred_{int(cls_pred_bin.item())}_{i}_{dcm_name[0].split('.')[0]}.png"), dpi=400)
     plt.close()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-##
+'''

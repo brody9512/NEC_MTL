@@ -1,6 +1,4 @@
- # CBAMBlock removed
- # args on parameter now
- # CustomDataset_Train is cleaned up, follows args 
+# CustomDataset_Train is cleaned up, follows args 
 from albumentations import Lambda as A_Lambda
 import os
 import cv2
@@ -12,8 +10,8 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import pydicom
 from pydicom.pixel_data_handlers.util import apply_modality_lut, apply_voi_lut
-# from torch.utils.data import Dataset
-from monai.data import Dataset
+from torch.utils.data import Dataset
+# from monai.data import Dataset
 import skimage.io
 import skimage.util
 
@@ -27,21 +25,21 @@ class MyLambda(A_Lambda):
 
 
 ########## <-- Train --> ##########
-class CustomDataset_Train(Dataset): # Dataset or Basedataset (from torch.utils.data import Dataset as BaseDataset)? %% go with monai for now and if it doesn't work we will uncomment torch.utils
+class CustomDataset_Train(Dataset): # Dataset or Basedataset (from torch.utils.data import Dataset as BaseDataset)? %% go with monai for now and if it doesn't work we will uncomment torch.utils // or vice versa
     """
     Custom Dataset for Multi-task learning (Segmentation + Classification).
     For training or validation modes, with data augmentations.
     In the future, you could split this into dataset_internal.py (for train)
     and dataset_external.py (for test) if the logic significantly differs.
     """
-    def __init__(self, df, args, training=True): # ,apply_voi=False,hu_threshold=None $$
+    def __init__(self, df, args, training=True): # ,apply_voi=False,hu_threshold=None,clipLimit=None,min_side=None $$
         
         self.df = df
         self.args = args
         self.training = training
         self.apply_voi = False
         self.hu_threshold = None
-        self.clipLimit = self.args.clahe
+        self.clipLimit = self.args.clahe_cliplimit
         self.min_side = self.args.size
         
         # Build Albumentations transforms
@@ -129,7 +127,7 @@ class CustomDataset_Train(Dataset): # Dataset or Basedataset (from torch.utils.d
         
         if self.training:
             # => rotate
-            transforms_list.append(A.Rotate(limit=self.args.rotate_angle, p=self.args.rotate_p))
+            transforms_list.append(A.Rotate(limit=self.args.rotate_angle, p=self.args.rotate_percentage))
             transforms_list.append(
                 A.ShiftScaleRotate(
                     shift_limit=0.1,
@@ -142,9 +140,9 @@ class CustomDataset_Train(Dataset): # Dataset or Basedataset (from torch.utils.d
             # => brightness/contrast
             transforms_list.append(
                 A.RandomBrightnessContrast(
-                    brightness_limit=self.args.rbc_b,
-                    contrast_limit=self.args.rbc_c,
-                    p=self.args.rbc_p
+                    brightness_limit=self.args.rbc_brightness,
+                    contrast_limit=self.args.rbc_contrast,
+                    p=self.args.rbc_percentage
                 )
             )
             # => random gamma
@@ -156,17 +154,17 @@ class CustomDataset_Train(Dataset): # Dataset or Basedataset (from torch.utils.d
                     )
                 )
             # => gaussian noise
-            if self.args.gaus_t_f:
+            if self.args.gaus_truefalse:
                 transforms_list.append(
                     A.GaussNoise(
                         var_limit=(self.args.gaus_min, self.args.gaus_max),
-                        p=self.args.gaus_p
+                        p=self.args.gaus_percentage
                     )
                 )
                 
             # => one-of transform group
             additional_transforms = []
-            if self.args.ela_t_f:
+            if self.args.elastic_truefalse:
                 additional_transforms.append(
                     A.ElasticTransform(
                         alpha=self.args.ela_alpha,
@@ -175,16 +173,15 @@ class CustomDataset_Train(Dataset): # Dataset or Basedataset (from torch.utils.d
                         p=self.args.ela_p
                     )
                 )
-            if self.args.cordrop_t_f: ## 여기서 if 적용?? --> it was written to do it but was commented out %% if로 하지말고 그대로 가자
-                additional_transforms.append(
-                    A.CoarseDropout(
-                        max_holes=4,
-                        max_height=8,
-                        max_width=8,
-                        fill_value=0,
-                        p=0.5
-                    )
+            additional_transforms.append(
+                A.CoarseDropout(
+                    max_holes=4,
+                    max_height=8,
+                    max_width=8,
+                    fill_value=0,
+                    p=0.5
                 )
+            )
             if len(additional_transforms) > 0:
                 transforms_list.append(A.OneOf(additional_transforms, p=0.5))
 

@@ -6,16 +6,21 @@ losses.py
 train.py
 data_loader.py for test.py 
 
+>once done with training part:
+test.py
+test_dataset.py
+test loss part from loss.py
 
-Comments from file:
-data_loader
--  # segmentation and classification both for train but only classification for test.py --> If dataset logic for training vs. testing is significantly different, then separate so = class InternalDataset(...) in dataset_internal.py & class ExternalDataset(...) in dataset_external.py --> I asked and the answer was YES! 
+
+Comments from file to keep in mind:
+dataset --> train_dataset & test_dataset
+-  # segmentation and classification both for train but only classification for test.py
 
 
 Done:
 config.py
 optim.py
-data_loader.py --> CustomDataset_Train
+dataset -> train_dataset and test_dataset
 
 
 ChatGPT input:
