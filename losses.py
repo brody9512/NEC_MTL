@@ -17,7 +17,7 @@ def soft_dice_score(output, target, smooth=0.0, eps=1e-7, dims=None): # (output:
     dice_score = (2.0 * intersection + smooth) / (cardinality + smooth).clamp_min(eps)
     return dice_score
 
-class DiceLoss(_Loss): # DiceLoss(nn.module)??
+class DiceLoss(_Loss): # DiceLoss(nn.module) $$
     def __init__(
         self,
         mode: str,
@@ -160,7 +160,7 @@ class Uptask_Loss_Train(torch.nn.Module):
         self.loss_cls = None
         self.loss_seg = None
         self.loss_rec = torch.nn.L1Loss()
-        # self.loss_consist = Consistency_Loss_Train() --> ?? do I also need consistency loss?
+        # self.loss_consist = Consistency_Loss_Train() --> %% NO get rid of it
         
         # Weights for each component of the loss
         self.cls_weight = cls_weight

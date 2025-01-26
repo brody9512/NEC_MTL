@@ -12,7 +12,7 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import pydicom
 from pydicom.pixel_data_handlers.util import apply_modality_lut, apply_voi_lut
-from torch.utils.data import Dataset
+# from torch.utils.data import Dataset
 from monai.data import Dataset
 import skimage.io
 import skimage.util
@@ -27,7 +27,7 @@ class MyLambda(A_Lambda):
 
 
 ########## <-- Train --> ##########
-class CustomDataset_Train(Dataset): # Dataset or Basedataset (from torch.utils.data import Dataset as BaseDataset)??
+class CustomDataset_Train(Dataset): # Dataset or Basedataset (from torch.utils.data import Dataset as BaseDataset)? %% go with monai for now and if it doesn't work we will uncomment torch.utils
     """
     Custom Dataset for Multi-task learning (Segmentation + Classification).
     For training or validation modes, with data augmentations.
@@ -175,7 +175,7 @@ class CustomDataset_Train(Dataset): # Dataset or Basedataset (from torch.utils.d
                         p=self.args.ela_p
                     )
                 )
-            if self.args.cordrop_t_f: ## 여기서 if 적용?? --> it was written to do it but was commented out
+            if self.args.cordrop_t_f: ## 여기서 if 적용?? --> it was written to do it but was commented out %% if로 하지말고 그대로 가자
                 additional_transforms.append(
                     A.CoarseDropout(
                         max_holes=4,

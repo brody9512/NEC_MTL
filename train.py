@@ -16,7 +16,95 @@ from dataset.train_dataset import CustomDataset_Test
 import losses
 import optim
 
+def get_weights_for_epoch(current_epoch, change_epoch, ratio):
+    """
+    Return the set of (cls_weight, seg_weight, [consist_weight]) for the given epoch.
+    """
+    for idx, chk_epoch in enumerate(change_epoch):
+        if current_epoch < chk_epoch:
+            # use ratio[idx-1] if idx>0, else ratio[0]
+            if idx == 0:
+                return np.array(ratio[0]) / np.sum(ratio[0])
+            return np.array(ratio[idx-1]) / np.sum(ratio[idx-1])
+    # If epoch beyond all transitions
+    return np.array(ratio[-1]) / np.sum(ratio[-1])
 
+def train_one_epoch(model, criterion, loader, optimizer, device, consistency_on):
+    model.train()
+    total_loss, total_seg_loss, total_cls_loss = 0.0, 0.0, 0.0
+    total_samples = 0
+
+    for batch in loader:
+        inputs = batch['image'].to(device)
+        masks  = batch['mask'].to(device)
+        labels = batch['label'].unsqueeze(1).to(device)
+
+        seg_pred, cls_pred = model(inputs)
+
+        # filter out "mask ==3" if any
+        no_mask_inds = (masks == 3).all(dim=1).all(dim=1).all(dim=1)
+        valid_inds   = ~no_mask_inds
+        seg_pred_valid = seg_pred[valid_inds] if valid_inds.any() else None
+        masks_valid    = masks[valid_inds]    if valid_inds.any() else None
+
+        loss, detail = criterion(
+            cls_pred=cls_pred,
+            seg_pred=seg_pred_valid,
+            cls_gt=labels,
+            seg_gt=masks_valid,
+        )
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        bs = inputs.size(0)
+        total_loss     += loss.item() * bs
+        total_seg_loss += detail['SEG_Loss'] * bs
+        total_cls_loss += detail['CLS_Loss'] * bs
+        total_samples  += bs
+
+    epoch_loss = total_loss / total_samples
+    seg_loss   = total_seg_loss / total_samples
+    cls_loss   = total_cls_loss / total_samples
+
+    return epoch_loss, seg_loss, cls_loss
+
+def validate_one_epoch(model, criterion, loader, device, consistency_on):
+    model.eval()
+    total_loss, total_seg_loss, total_cls_loss, total_samples = 0.0,0.0,0.0,0
+
+    with torch.no_grad():
+        for batch in loader:
+            inputs = batch['image'].to(device)
+            masks  = batch['mask'].to(device)
+            labels = batch['label'].unsqueeze(1).to(device)
+
+            seg_pred, cls_pred = model(inputs)
+
+            no_mask_inds = (masks == 3).all(dim=1).all(dim=1).all(dim=1)
+            valid_inds   = ~no_mask_inds
+            seg_pred_valid = seg_pred[valid_inds] if valid_inds.any() else None
+            masks_valid    = masks[valid_inds]    if valid_inds.any() else None
+
+            loss, detail = criterion(
+                cls_pred=cls_pred,
+                seg_pred=seg_pred_valid,
+                cls_gt=labels,
+                seg_gt=masks_valid,
+                consist=consistency_on
+            )
+
+            bs = inputs.size(0)
+            total_loss     += loss.item() * bs
+            total_seg_loss += detail['SEG_Loss'] * bs
+            total_cls_loss += detail['CLS_Loss'] * bs
+            total_samples  += bs
+
+    epoch_loss = total_loss / total_samples
+    seg_loss   = total_seg_loss / total_samples
+    cls_loss   = total_cls_loss / total_samples
+    return epoch_loss, seg_loss, cls_loss
 
 def main():
     # Parse arguments
@@ -27,48 +115,48 @@ def main():
     # gpu=args.gpu
     # optim=args.optim
     # EPOCHS = args.epoch
-    # ver = args.ver
-    # st = args.st
-    # de = args.de
-    # clipLimit_=args.clahe
+    # ver = args.ver ## version
+        # st = args.st ##  
+        # de = args.de ## 
+    # clipLimit_=args.clahe # clahe 기법의 limit (사진을 limit을 주면서 자르기 때문에 cliplimit으로 함)
     # train_batch=args.batch
     # min_side_=args.size
-    # lr_=args.lr_
-    # lr__=args.lr__
-    # lr_p=args.lr___
+        # lr_=args.lr_ ## lr_type
+        # lr__=args.lr__ ## lr_startstep
+        # lr_p=args.lr___ ## lr_patience
     # seg_op= args.seg_op
     # seg_weight_= args.seg_weight
     # feature=args.feature
     # infer=args.infer
     # external=args.external
     # weight_=args.weight
-    # cbam_ = args.cbam
+
     # half= args.half
-    # thr_t_f=args.thr_t_f
-    # thr=args.thr
+        # thr_t_f=args.thr_t_f ## model_threshold_truefalse
+        # thr=args.thr ## model_threshold
     # clip_min=args.clip_min
     # clip_max=args.clip_max
     # rotate_angle = args.rotate_angle
-    # rotate_p = args.rotate_p
-    # rbc_b=args.rbc_b
-    # rbc_c=args.rbc_c
-    # rbc_p=args.rbc_p
-    # ela_t_f=args.ela_t_f
-    # ela_alpha=args.ela_alpha
-    # ela_sigma=args.ela_sigma
-    # ela_alpha_aff=args.ela_alpha_aff
-    # ela_p=args.ela_p
-    # gaus_t_f=args.gaus_t_f
+        # rotate_p = args.rotate_p ## rotate_percentage
+        # rbc_b=args.rbc_brightness
+        # rbc_c=args.rbc_contrast
+        # rbc_p=args.rbc_percentage
+        # ela_t_f=args.ela_t_f ## elastic_truefalse
+        # ela_alpha=args.ela_alpha ## elastic_alpha
+        # ela_sigma=args.ela_sigma ## elastic_sigma
+        # ela_alpha_aff=args.ela_alpha_aff ## elastic_alpha_affine
+        # ela_p=args.ela_p ## percentage
+        # gaus_t_f=args.gaus_t_f
     # gaus_min=args.gaus_min
     # gaus_max=args.gaus_max
-    # gaus_p=args.gaus_p
+        # gaus_p=args.gaus_p
     # cordrop_t_f=args.cordrop_t_f
-    # Horizontal_t_f=args.Horizontal_t_f
-    # Horizontal_p = args.Horizontal_p
+        # Horizontal_t_f=args.Horizontal_t_f
+        # Horizontal_p = args.Horizontal_p
     # gamma_min=args.gamma_min
     # gamma_max=args.gamma_max
-    # gamma_p=args.gamma_p
-    # gamma_t_f=args.gamma_t_f
+        # gamma_p=args.gamma_p
+        # gamma_t_f=args.gamma_t_f
     # sizecrop_min_r=args.sizecrop_min_r
     # sizecrop_p=args.sizecrop_p
     # sizecrop_t_f=args.sizecrop_t_f
@@ -77,7 +165,7 @@ def main():
     # epoch_loss_ =args.epoch_loss
     # k_size_=args.k_size
     # loss_type_=args.loss_type
-    # clahe_l = args.clahe_limit
+    # clahe_l = args.clahe_limit ## clahe_limit
     # seed_=args.seed
     
     # Setup device
@@ -89,30 +177,7 @@ def main():
     
     change_epoch = [0, 100, 120, 135, 160, 170, 175]
     
-    # Dictionary mapping seg_op values to their corresponding ratios
-    ratio_map = { ## 학습을 효율화 할 수 있게 weight을 조정해본 것 --> 없애도됨. 단지 나중에 이해하고 없애기
-        'seg_fast': [[1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [1, 0]],
-        'seg_slow': [[5, 5], [5, 5], [5, 5], [3, 7], [3, 7], [3, 7], [3, 7]],
-        'consist_0': [[5, 5, 0], [5, 5, 0], [5, 5, 0], [5, 0, 5], [5, 0, 5], [5, 0, 5], [5, 0, 5]],
-        'consist_1': [[1, 9, 5], [2, 8, 5], [35, 65, 50], [5, 5, 5], [65, 35, 50], [8, 2, 5], [9, 1, 5]],
-        'consist': [[5, 5, 5], [5, 5, 5], [5, 5, 5], [5, 5, 5], [5, 5, 5], [5, 5, 5], [5, 5, 5]],
-        'seg_stop_fast_0': [[5, 5], [5, 5], [5, 5], [7, 3], [7, 3], [7, 3], [7, 3]],
-        'seg_stop_fast_1': [[5, 5], [5, 5], [5, 5], [8, 2], [8, 2], [8, 2], [8, 2]],
-        'seg_stop_fast_2': [[5, 5], [5, 5], [5, 5], [9, 1], [9, 1], [9, 1], [9, 1]],
-        'non': [[5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5]]
-    }
-
-    # Retrieve the ratio based on the seg_op value
-    ratio = ratio_map.get(args.seg_op, None)
-    
-    if len(ratio[0]) == 3:
-        consist_ = True
-    else:
-        consist_ = False
-
-    # Check if ratio is None, meaning an invalid seg_op was provided
-    if ratio is None:
-        raise ValueError(f"Invalid seg_op value: {args.seg_op}")
+    ratio = utils.get_segop_ratios(args.seg_op)
     
     if len(ratio[0]) == 3:
         consist_ = True
