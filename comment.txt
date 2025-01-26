@@ -21,6 +21,7 @@ Done:
 config.py
 optim.py
 dataset -> train_dataset and test_dataset
+losses.py
 
 
 ChatGPT input:
