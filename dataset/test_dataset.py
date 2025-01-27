@@ -18,6 +18,7 @@ class MyLambda(A_Lambda):
     def __call__(self, force_apply=False, **data):
         return super().__call__(**data)
 
+########## <-- Test --> ##########
 class CustomDataset(Dataset):
     def __init__(self, df, args, training=True): # ,apply_voi=False,hu_threshold=None,clipLimit=None,min_side=None $$
         self.df = df
