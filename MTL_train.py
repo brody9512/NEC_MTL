@@ -315,12 +315,6 @@ else:
     train_df = df_filtered[df_filtered['Mode_1'] == 'train']
     val_df = df_filtered[df_filtered['Mode_1'] == 'validation']
     test_df = df_filtered[df_filtered['Mode_1'] == 'test']
-
-# if half:
-#     # Sample half of each DataFrame (assuming each has more than 1 row)
-#     train_df = train_df.sample(n=len(train_df_full) // 2, random_state=42)
-#     val_df = val_df.sample(n=len(val_df_full) // 2, random_state=42)
-#     test_df = test_df.sample(n=len(test_df_full) // 2, random_state=42)
     
 
 

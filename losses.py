@@ -131,7 +131,7 @@ class Dice_BCE_Loss(nn.Module):
         return self.dice_weight*dloss + self.bce_weight*bloss
 
 class Uptask_Loss_Train(torch.nn.Module):
-    def __init__(self, cls_weight=1.0, seg_weight=1.0, consist_weight=0, loss_type='bc_di'):
+    def __init__(self, cls_weight=1.0, seg_weight=1.0, loss_type='bc_di'):
         
         super().__init__()
         
@@ -145,7 +145,7 @@ class Uptask_Loss_Train(torch.nn.Module):
         self.cls_weight = cls_weight
         self.seg_weight = seg_weight
         self.rec_weight = 1.0
-        self.consist_weight = consist_weight
+        # self.consist_weight = consist_weight
         
         # Select loss type
         self.loss_type = loss_type
@@ -154,7 +154,7 @@ class Uptask_Loss_Train(torch.nn.Module):
         self.loss_seg = Dice_BCE_Loss()
 
 
-    def forward(self, cls_pred=None, seg_pred=None, rec_pred=None, cls_gt=None, seg_gt=None, rec_gt=None, consist=False):
+    def forward(self, cls_pred=None, seg_pred=None, cls_gt=None, seg_gt=None): # ,consist=False
         # If classification prediction and ground truth are provided, calculate classification loss
         loss_cls = self.loss_cls(cls_pred, cls_gt) if cls_pred is not None and cls_gt is not None else 0
         
@@ -162,15 +162,15 @@ class Uptask_Loss_Train(torch.nn.Module):
         loss_seg = self.loss_seg(seg_pred, seg_gt) if seg_pred is not None and seg_gt is not None else 0
         
         # If consistency needs to be calculated
-        loss_consist = self.loss_consist(cls_pred, seg_pred) if consist else 0
+        # loss_consist = self.loss_consist(cls_pred, seg_pred) if consist else 0
         
         # Combine the losses
-        total = self.cls_weight * loss_cls + self.seg_weight * loss_seg + self.consist_weight * loss_consist
+        total = self.cls_weight * loss_cls + self.seg_weight * loss_seg # self.consist_weight * loss_consist
         
         # Record the individual components of the loss
         total_ = {'CLS_Loss': (self.cls_weight * loss_cls).item(), 'SEG_Loss': (self.seg_weight * loss_seg).item()}
-        if consist:
-            total_['Consist_Loss'] = (self.consist_weight * loss_consist).item()
+        # if consist:
+        #     total_['Consist_Loss'] = (self.consist_weight * loss_consist).item()
         
         return total, total_
 
