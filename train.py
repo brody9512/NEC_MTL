@@ -6,27 +6,33 @@ import torch
 import pandas as pd
 import numpy as np
 import monai
+import matplotlib.colors as mcolors
 from monai.transforms import *
-from monai.data import Dataset
 import monai
 from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
 import ssl
 import math
+import itertools
 import shutil
 from torch.optim import lr_scheduler
-import torch.utils.data.dataloader
+# import torch.utils.data.dataloader
 import torch.nn as nn
 from monai.metrics import DiceMetric, ConfusionMatrixMetric
-from sklearn.metrics import f1_score, accuracy_score, recall_score, precision_score, roc_auc_score
+from sklearn.metrics import f1_score, accuracy_score, recall_score, precision_score, roc_auc_score, roc_curve, auc, confusion_matrix, classification_report
 
 # Import from Directory Architecture
 from config import get_args_train
 import utils
 from dataset.train_dataset import CustomDataset_Train
 from model import MultiTaskModel
-import losses
+from losses import Uptask_Loss_Train
 import optim
 
+
+# -----------------------------------------
+# Functions for Train
+# -----------------------------------------
 def get_weights_for_epoch(current_epoch, change_epoch, ratio):
     for idx, check_epoch in enumerate(change_epoch):
         if current_epoch < check_epoch:
@@ -258,6 +264,9 @@ def validate_one_epoch(model, criterion, data_loader, device):
     return sample_loss, sample_metrics
 
 
+# -----------------------------------------
+# Main
+# -----------------------------------------
 def main():
     # Parse arguments
     args = get_args_train()
@@ -268,6 +277,9 @@ def main():
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     
+    # Segop Ratio
+    ratio = utils.get_segop_ratios(args.seg_op)
+    
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     change_epoch = [0, 100, 120, 135, 160, 170, 175]
     utils.my_seed_everywhere(args.seed)
@@ -276,7 +288,7 @@ def main():
     current_time = datetime.datetime.now().strftime("%m%d")
     
     if args.infer or args.external:
-        run_name = f"{args.weight}_infer" if args.infer else f"{args.weight}_ex"
+        run_name = f"{args.weight}_train" if args.infer else f"{args.weight}_traintest"
         save_dir = f"/workspace/203changhyun/nec_ch/v1_pneumoperiT_code/result/{run_name}"
     else:
         # Some naming logic
@@ -301,7 +313,7 @@ def main():
                                   shuffle=False,
                                   num_workers=0,
                                   worker_init_fn=utils.seed_worker,
-                                  collate_fn=torch.utils.data.dataloader.default_collate)
+                                  collate_fn=monai.data.utils.default_collate)
     else:
         # Filter out rows where 'label' is not 0 or 1
         df_filtered = df[df['label'].isin([0, 1])]
@@ -320,19 +332,19 @@ def main():
                                   shuffle=True,
                                   num_workers=0,
                                   worker_init_fn=utils.seed_worker,
-                                  collate_fn=torch.utils.data.dataloader.default_collate) ## ??%% monai.data.utils.default_collate is depreciated?
+                                  collate_fn=monai.data.utils.default_collate) ## ??%% monai.data.utils.default_collate is depreciated? // torch.utils.data.dataloader.default_collate
         val_loader = DataLoader(val_dataset,
                                 batch_size=1,
                                 shuffle=False,
                                 num_workers=0,
                                 worker_init_fn=utils.seed_worker,
-                                collate_fn=torch.utils.data.dataloader.default_collate)
+                                collate_fn=monai.data.utils.default_collate)
         test_loader = DataLoader(test_dataset,
                                  batch_size=1,
                                  shuffle=False,
-                                 num_workers=0,
+                                 num_workers=0, 
                                  worker_init_fn=utils.seed_worker,
-                                 collate_fn=torch.utils.data.dataloader.default_collate)
+                                 collate_fn=monai.data.utils.default_collate)
         
     # Build Model
     aux_params = dict(pooling = 'avg', dropout = 0.5, activation = None, classes = 1)
@@ -350,33 +362,231 @@ def main():
     else:
         scheduler = lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
     
-    
+    if not (args.infer or args.external):
+        lrs =[]
+        prev_weights =None
+        best_loss = float('inf')
+        best_auc = 0.0  # 초기화: 최고의 AUC 값을 저장하기 위한 변수
         
+        # 각 손실 및 측정치에 대한 빈 딕셔너리 초기화
+        losses = {k: [] for k in ['train_epoch_loss', 'train_epoch_seg_loss', 'train_epoch_class_loss', 'test_epoch_loss', 'test_epoch_seg_loss', 'test_epoch_class_loss']}
+        metrics = {k: [] for k in ['auc', 'f1', 'acc', 'sen', 'spe', 'dice']}
+
+        for epoch in range(args.epoch):
+            print(f"Epoch {epoch+1}\n--------------------------------------------------")
+        
+            if not args.seg_op =='non':
+                # 현재 epoch에 대한 가중치 가져오기
+                weights = get_weights_for_epoch(epoch, change_epoch, ratio)
+        
+                # 이전 가중치와 현재 가중치가 다르면 가중치를 출력합니다.
+                if prev_weights is None or not np.array_equal(prev_weights, weights):
+                    print(f"Weights for Epoch {epoch + 1}: {weights}")
+                    prev_weights = weights
+                
+                if len(weights) == 2:
+                    cls_weight, seg_weight = weights
+                    train_criterion = Uptask_Loss_Train(cls_weight=cls_weight, seg_weight=seg_weight,loss_type=args.loss_type)
+                    test_criterion = Uptask_Loss_Train(cls_weight=cls_weight, seg_weight=seg_weight,loss_type=args.loss_type)
+        
+            else:
+                train_criterion = Uptask_Loss_Train(cls_weight=1.0, seg_weight=1.0,loss_type=args.loss_type)
+                test_criterion = Uptask_Loss_Train(cls_weight=1.0, seg_weight=1.0,loss_type=args.loss_type)
+        
+            train_criterion = train_criterion.to(DEVICE)
+            test_criterion = test_criterion.to(DEVICE)
+            
+            train_sample_loss = train_one_epoch(mtl_model,train_criterion, train_loader, optimizer, DEVICE)
+            test_sample_loss, test_sample_metrics = validate_one_epoch(mtl_model, test_criterion, val_loader, DEVICE)
+        
+            # 결과를 각각의 딕셔너리에 추가
+            for key in losses.keys():
+                if 'train' in key:
+                    losses[key].append(train_sample_loss[key.split('train_')[1]])
+                else:
+                    losses[key].append(test_sample_loss[key.split('test_')[1]])
+        
+            for key in metrics.keys():
+                metrics[key].append(test_sample_metrics[key])
+        
+            # 최적의 모델 저장
+            if test_sample_loss[args.epoch_loss] < best_loss:
+                best_loss = test_sample_loss[args.epoch_loss]
+                utils.save_checkpoint(mtl_model, optimizer, f'/workspace/203changhyun/nec_ch/v1_pneumoperiT_code/weight/{run_name}')
+                print('Model saved! \n')
+        
+            scheduler.step(metrics=test_sample_loss[args.epoch_loss])  # test_class_loss에 따라 학습률 갱신
+            lrs.append(optimizer.param_groups[0]["lr"])
+        
+        print("Done!")
+        
+        #LR
+        plt.plot([i+1 for i in range(len(lrs))],lrs,color='g', label='Learning_Rate')
+        plt.savefig(os.path.join(save_dir,f"LR.png"))
+        plt.figure(figsize=(12, 27))
+        
+        plt.subplot(311)
+        # 훈련 데이터에 대한 손실 그래프
+        plt.plot(range(args.epoch), losses['train_epoch_loss'], color='darkred', label='Train Total Loss')
+        # 테스트 데이터에 대한 손실 그래프
+        plt.plot(range(args.epoch), losses['test_epoch_loss'], color='darkblue', label='Val Total Loss')
+        plt.xlabel("Epoch", fontsize=11)
+        plt.ylabel("Loss", fontsize=11)
+        plt.title("Total Losses", fontsize=16)
+        plt.legend(loc='upper right')
+
+        plt.subplot(312)
+        # 훈련 데이터에 대한 손실 그래프
+        plt.plot(range(args.epoch), losses['train_epoch_seg_loss'], color='red', label='Train Segmentation Loss')
+        plt.plot(range(args.epoch), losses['train_epoch_class_loss'], color= 'salmon' , label='Train Classification Loss')
+        # 테스트 데이터에 대한 손실 그래프  
+        plt.plot(range(args.epoch), losses['test_epoch_seg_loss'], color='blue', label='Val Segmentation Loss')
+        plt.plot(range(args.epoch), losses['test_epoch_class_loss'], color='lightblue', label='Val Classification Loss')
+        plt.xlabel("Epoch", fontsize=11)
+        plt.ylabel("Loss", fontsize=11)
+        plt.title("SEG and CLS Losses", fontsize=16)
+        plt.legend(loc='upper right')
+        
+        
+        plt.subplot(313)
+        # 훈련 데이터에 대한 메트릭 그래프
+        plt.plot(range(args.epoch), metrics['f1'], color='hotpink', label='F1 Score_(CLS)')
+        plt.plot(range(args.epoch), metrics['dice'], color='royalblue', label='Dice Score_(SEG)')
+        plt.xlabel("Epoch", fontsize=11)
+        plt.ylabel("Score", fontsize=11)
+        plt.title("F1(CLS) and Dice Score(SEG)", fontsize=16)
+        plt.legend()
+        
+        plt.savefig(os.path.join(save_dir,f"train_val_loss.png"))
+        plt.close()
+        
+        checkpoint = torch.load(f'/workspace/203changhyun/nec_ch/v1_pneumoperiT_code/weight/{run_name}.pth')
+        mtl_model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     
+    if args.infer or args.external:
+        checkpoint = torch.load(f'/workspace/203changhyun/nec_ch/v1_pneumoperiT_code/weight/{run_name}.pth') # args.weight
+    else:
+        checkpoint = torch.load(f'/workspace/203changhyun/nec_ch/v1_pneumoperiT_code/weight/{run_name}.pth')
     
+    mtl_model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     
-    ############################################################################
-    ratio = utils.get_segop_ratios(args.seg_op)
+    # 테스트 데이터에 대한 추론 수행
+    y_true, y_prob, avg_cls_loss, avg_seg_loss, dice_score, results = utils.test_inference_train(mtl_model, Uptask_Loss_Train(cls_weight=1.0,seg_weight=1.0).to(DEVICE), test_loader, DEVICE)
     
+    # Flatten the list of arrays to a list of scalars
+    y_true_flat = [item[0] for item in y_true]
+    y_prob_flat_0 = [item[0] for item in y_prob]
+
+    # 소수점 다섯 자리까지 반올림
+    y_prob_flat = [round(num, 5) for num in y_prob_flat_0]
+
+    print(f'y_true: \n{y_true_flat}\n')
+    print(f'y_prob: \n{y_prob_flat}\n')
+
+    with open(os.path.join(save_dir,f'results_y_true_prob.txt'), 'w', encoding='utf-8') as f:
+        f.write(f'y_true: \n{y_true_flat}\n')
+        f.write(f'y_prob: \n{y_prob_flat}\n')
+
+    y_true_np = np.array(y_true_flat)
+    y_prob_np = np.array(y_prob_flat)
+    np.savez(f"{save_dir}/results_y_true_prob.npz", y_true=y_true_np, y_prob=y_prob_np)
     
+    fpr, tpr, th = roc_curve(y_true, y_prob)
+    roc_auc = auc(fpr, tpr)
+
+    youden = np.argmax(tpr-fpr)
+
+    # Calculate 95% CI for AUC using bootstrap
+    ci_lower, ci_upper = utils.calculate_auc_ci(np.array(y_true_flat), np.array(y_prob_flat))
+
+    plt.figure(figsize=(5,5))
+    plt.plot(fpr, tpr, color="darkorange", lw=2, label="ROC curve (area = %0.2f, 95%% CI: %0.2f-%0.2f)" % (roc_auc, ci_lower, ci_upper))
+    plt.plot([0, 1], [0, 1], color="gray", lw=2, linestyle="--")
+    plt.xlim([-0.01, 1.0])
+    plt.ylim([0.0, 1.01])
+    plt.xlabel("False Positive Rate", fontsize=14)
+    plt.ylabel("True Positive Rate", fontsize=14)
+    plt.legend(loc="lower right", fontsize=12)
+
+    # 그림을 저장
+    plt.savefig(os.path.join(save_dir,f"roc_curve.png"))
+    plt.close()
+
+    if args.model_threshold_truefalse:
+        thr_val = args.model_threshold
+    else:
+        thr_val = th[youden]
+
+    y_pred_1 = []
+    for prob in y_prob:
+        if prob >= thr_val: 
+            y_pred_1.append(1)
+        else:
+            y_pred_1.append(0)
     
-    # 4. Load your data
-    df = pd.read_csv(args.path)  # Contains train, val, test splits or just train/val
-    train_df = df[df["Mode_1"] == "train"]
-    val_df   = df[df["Mode_1"] == "validation"]
+    A_pred = (y_prob_np >= thr_val).astype(int)
+
+    # 정확도 (Accuracy) 계산
+    accuracy_A = accuracy_score(y_true_np, A_pred)
+
+    # 민감도 (Sensitivity) 계산 (Recall과 동일)
+    sensitivity_A = recall_score(y_true_np, A_pred)
+
+    # 특이도 (Specificity) 계산
+    # Specificity = TN / (TN + FP)
+    conf_matrix_A = confusion_matrix(y_true_np, A_pred)
+    specificity_A = conf_matrix_A[0, 0] / (conf_matrix_A[0, 0] + conf_matrix_A[0, 1])
+
+    # Accuracy CI
+    ci_accuracy_A = utils.calculate_ci(accuracy_A, len(y_true_np))
+
+    # Sensitivity CI
+    ci_sensitivity_A = utils.calculate_c(sensitivity_A, np.sum(y_true_np == 1))
+
+    # Specificity CI
+    ci_specificity_A = utils.calculate_c(specificity_A, np.sum(y_true_np == 0))
+
+    # 결과 출력
+    print(f"Model Accuracy: {accuracy_A:.4f}, 95% CI: ({ci_accuracy_A[0]:.4f}, {ci_accuracy_A[1]:.4f})")
+    print(f"Model Sensitivity: {sensitivity_A:.4f}, 95% CI: ({ci_sensitivity_A[0]:.4f}, {ci_sensitivity_A[1]:.4f})")
+    print(f"Model Specificity: {specificity_A:.4f}, 95% CI: ({ci_specificity_A[0]:.4f}, {ci_specificity_A[1]:.4f})\n")
+
+    print("ROC curve (area = %0.4f, 95%% CI: %0.4f-%0.4f)" % (roc_auc, ci_lower, ci_upper))
+
+    target_names = ["True Non-PP","True PP"]
+
+    report=classification_report(y_true, y_pred_1, target_names=target_names)
+
+    #결과 저장 + dcm acc, fscore 추가
+    with open(os.path.join(save_dir,f'results.txt'), 'w', encoding='utf-8') as f:
+        f.write(f'Average Classification Loss: {avg_cls_loss}\n')
+        f.write(f'Average Segmentation Loss: {avg_seg_loss}\n')
+        f.write(f'Dice Score: {dice_score}\n')
+        f.write(f'Classification Report:\n{report}\n')
+        f.write(f'Youden index:\n{thr_val}\n')
+
+        # Model Performance Metrics 저장
+        f.write(f"\nModel Performance Metrics:\n")
+        f.write(f"Model Accuracy: {accuracy_A:.4f}, 95% CI: ({ci_accuracy_A[0]:.4f}, {ci_accuracy_A[1]:.4f})\n")
+        f.write(f"Model Sensitivity: {sensitivity_A:.4f}, 95% CI: ({ci_sensitivity_A[0]:.4f}, {ci_sensitivity_A[1]:.4f})\n")
+        f.write(f"Model Specificity: {specificity_A:.4f}, 95% CI: ({ci_specificity_A[0]:.4f}, {ci_specificity_A[1]:.4f})\n")
+        f.write(f"ROC curve (area = {roc_auc:.2f}, 95% CI: {ci_lower:.4f}-{ci_upper:.4f})\n")
+
+        for dcm_name, metrics in results.items():
+            f.write(f'\n dcm_name: {dcm_name}\n')
+            for metric, value in metrics.items():
+                f.write(f'  {metric}: {value}\n')
+
+    target_names = ["True Non-PP","True PP"]
+    target_names_1=["Pred Non-PP","Pred PP"]
     
-    ## Create your dataset class (place it here or import it)
-    train_dataset = train_dataset.CustomDataset(
-        data_frame=train_df, 
-        training=True, 
-        rotate_angle=args.rotate_angle,
-        rotate_percentage=args.rotate_percentage,
-        ### put more
-    ) 
-    
-    ## Wrap them in DataLoaders (train_loader, val_loader)
-    ## this is the same for train & test; could this be simplified?
-    
+    # Confusion matrix 계산
+    cm = confusion_matrix(y_true, y_pred_1)
+
+    # Confusion matrix 그리기
+    utils.plot_confusion_matrix(cm, target_names,target_names_1,save_path=os.path.join(save_dir, f"confusion_matrix.png"))#'/path/to/save/image.png
     
 
 # -----------------------------------------

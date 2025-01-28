@@ -30,7 +30,7 @@ def get_args_train():
 
     # Classification & Segmentation Options
     parser.add_argument('--seg_weight', action='store_true', default=False)
-    parser.add_argument('--seg_op', type=str,  default='non', choices=['non', 'seg_fast','seg_slow','seg_stop_fast_2','seg_stop_fast_0','seg_stop_fast_1','consist_0','consist_1','consist'])
+    parser.add_argument('--seg_op', type=str,  default='non', choices=['non', 'seg_fast','seg_slow','seg_stop_fast_2','seg_stop_fast_0','seg_stop_fast_1'])
     parser.add_argument('--feature', type=str,default='_')
     parser.add_argument('--epoch_loss', type=str, default='epoch_loss', choices=['epoch_class_loss', 'epoch_loss'], help='Which loss to track for best model checkpoint?')
 

@@ -10,8 +10,8 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import pydicom
 from pydicom.pixel_data_handlers.util import apply_modality_lut, apply_voi_lut
-from torch.utils.data import Dataset
-# from monai.data import Dataset
+# from torch.utils.data import Dataset
+from monai.data import Dataset
 import skimage.io
 import skimage.util
 
@@ -25,7 +25,7 @@ class MyLambda(A_Lambda):
 
 
 ########## <-- Train --> ##########
-class CustomDataset_Train(Dataset): # Dataset or Basedataset (from torch.utils.data import Dataset as BaseDataset)? %% go with monai for now and if it doesn't work we will uncomment torch.utils // or vice versa
+class CustomDataset_Train(Dataset): # %% go with monai for now and if it doesn't work we will uncomment torch.utils // or vice versa
     """
     Custom Dataset for Multi-task learning (Segmentation + Classification).
     For training or validation modes, with data augmentations.
@@ -326,9 +326,10 @@ class CustomDataset_Train(Dataset): # Dataset or Basedataset (from torch.utils.d
         elif -45 < angle_new < -5:
             angle_new += angle_new/2
 
-        h_new, w_new = cropped_img.shape[:2]
+        h_new, w_new = cropped_img.shape[:2] # (h_new, w_new)
         center_new = (w_new // 2, h_new // 2)
         M_new = cv2.getRotationMatrix2D(center_new, angle_new, 1.0)
+        
         return M_new, angle_new, h_new, w_new, threshold
 
     def process_row_angle_ok(self, img, M, angle, h, w):

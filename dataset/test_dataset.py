@@ -19,7 +19,7 @@ class MyLambda(A_Lambda):
         return super().__call__(**data)
 
 ########## <-- Test --> ##########
-class CustomDataset(Dataset):
+class CustomDataset_Test(Dataset):
     def __init__(self, df, args, training=True): # ,apply_voi=False,hu_threshold=None,clipLimit=None,min_side=None $$
         self.df = df
         self.training = training

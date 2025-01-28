@@ -39,9 +39,6 @@ def get_segop_ratios(seg_op):
     ratio_map = { ## 학습을 효율화 할 수 있게 weight을 조정해본 것 --> 없애도됨. 단지 나중에 이해하고 없애기
         'seg_fast': [[1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [1, 0]],
         'seg_slow': [[5, 5], [5, 5], [5, 5], [3, 7], [3, 7], [3, 7], [3, 7]],
-        'consist_0': [[5, 5, 0], [5, 5, 0], [5, 5, 0], [5, 0, 5], [5, 0, 5], [5, 0, 5], [5, 0, 5]],
-        'consist_1': [[1, 9, 5], [2, 8, 5], [35, 65, 50], [5, 5, 5], [65, 35, 50], [8, 2, 5], [9, 1, 5]],
-        'consist': [[5, 5, 5], [5, 5, 5], [5, 5, 5], [5, 5, 5], [5, 5, 5], [5, 5, 5], [5, 5, 5]],
         'seg_stop_fast_0': [[5, 5], [5, 5], [5, 5], [7, 3], [7, 3], [7, 3], [7, 3]],
         'seg_stop_fast_1': [[5, 5], [5, 5], [5, 5], [8, 2], [8, 2], [8, 2], [8, 2]],
         'seg_stop_fast_2': [[5, 5], [5, 5], [5, 5], [9, 1], [9, 1], [9, 1], [9, 1]],
@@ -190,7 +187,7 @@ def test_inference_train(model, criterion, data_loader, device, threshold=0.5):
     
     return y_true, y_prob, average_cls_loss, average_seg_loss, dice_score_epoch, results
 
-def test_inference(model, criterion, data_loader, device, threshold=0.5):
+def test_inference_test(model, criterion, data_loader, device, threshold=0.5):
     model.eval()
 
     y_true = []

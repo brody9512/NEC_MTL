@@ -155,11 +155,6 @@ args = parser.parse_args()
 change_epoch = [0, 15, 28, 40, 55, 68, 75]
 ratio = [[5, 5], [5, 5],[5, 5],[1,9] ,[1, 9], [1,9], [1, 9]]
 
-if len(ratio[0]) == 3:
-    consist_ = True
-else:
-    consist_ = False
-
 if external:
     name=f'{weight_}_ex_{feature}'
 else:

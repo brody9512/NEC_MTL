@@ -1,6 +1,5 @@
 ##NEEDS WORK##
-test.py
-train.py
+
 -------------------
 ##DONE##
 config.py -> finished both train and test 
@@ -9,6 +8,9 @@ dataset -> train_dataset and test_dataset
 losses.py -> finished both train and test 
 model.py -> finished = same for train and test
 utils.py -> finished both train and test 
+test.py
+train.py
+preprocessing.py
 --------------------
 Comments from file to keep in mind:
 dataset --> train_dataset & test_dataset
