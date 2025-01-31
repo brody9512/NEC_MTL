@@ -20,7 +20,7 @@ class MyLambda(A_Lambda):
 
 ########## <-- Test --> ##########
 class CustomDataset_Test(Dataset):
-    def __init__(self, df, args, training=True): # ,apply_voi=False,hu_threshold=None,clipLimit=None,min_side=None $$
+    def __init__(self, df, args, training=True): 
         self.df = df
         self.training = training
         self.apply_voi=False

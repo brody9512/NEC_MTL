@@ -30,7 +30,7 @@ import shutil
 
 
 def process_row_crop(dicom_e):
-    dcm_img_8u = cv2.normalize(dicom_e, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8) # inside normalize parapeter: dtype=cv2.CV_8U $$
+    dcm_img_8u = cv2.normalize(dicom_e, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
     _, binary = cv2.threshold(dcm_img_8u, 50, 255, cv2.THRESH_BINARY)
     contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contour = max(contours, key=cv2.contourArea)
@@ -109,7 +109,7 @@ def normalize(image, option=False, **kwargs):
         image = image.astype(np.float32)
 
     # If it's not a constant image
-    if len(np.unique(image)) > 1: # != 1 %%% if not working, then replace w/ original which is this statement
+    if len(np.unique(image)) > 1: # != 1
         image -= image.min()
         image /= image.max()
 

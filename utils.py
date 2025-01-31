@@ -11,7 +11,6 @@ from monai.metrics import DiceMetric
 from sklearn.metrics import roc_auc_score, accuracy_score
 
 def my_seed_everywhere(seed: int = 42):
-    """Set random seeds for reproducibility."""
     random.seed(seed)
     np.random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
@@ -22,7 +21,6 @@ def my_seed_everywhere(seed: int = 42):
     torch.backends.cudnn.benchmark = False
     
 def seed_worker(worker_id):
-    """Ensure reproducibility in DataLoader workers."""
     worker_seed = torch.initial_seed() % 2**32
     np.random.seed(worker_seed)
     random.seed(worker_seed)
@@ -36,7 +34,8 @@ def save_checkpoint(model, optimizer, path):
     torch.save(checkpoint, filename)
 
 def get_segop_ratios(seg_op):
-    ratio_map = { ## 학습을 효율화 할 수 있게 weight을 조정해본 것 --> 없애도됨. 단지 나중에 이해하고 없애기
+    ## 학습을 효율화 할 수 있게 weight을 조정해본 것 --> 없애도됨. 단지 나중에 이해하고 없애기
+    ratio_map = { 
         'seg_fast': [[1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [1, 0]],
         'seg_slow': [[5, 5], [5, 5], [5, 5], [3, 7], [3, 7], [3, 7], [3, 7]],
         'seg_stop_fast_0': [[5, 5], [5, 5], [5, 5], [7, 3], [7, 3], [7, 3], [7, 3]],

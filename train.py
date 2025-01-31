@@ -1,4 +1,3 @@
-# Argparser in the beginning takes up a lot of code space; what if we just use args values as is (for ex: using path as args.path)? This would save a lot of space + memory
 import datetime
 import os
 import monai.data
@@ -16,7 +15,6 @@ import math
 import itertools
 import shutil
 from torch.optim import lr_scheduler
-# import torch.utils.data.dataloader
 import torch.nn as nn
 from monai.metrics import DiceMetric, ConfusionMatrixMetric
 from sklearn.metrics import f1_score, accuracy_score, recall_score, precision_score, roc_auc_score, roc_curve, auc, confusion_matrix, classification_report
@@ -52,8 +50,7 @@ def train_one_epoch(model, criterion, data_loader, optimizer, device):
         data_loader (DataLoader): Data loader for training.
         optimizer (torch.optim.Optimizer): Optimizer instance.
         device (torch.device): 'cuda' or 'cpu'.
-        ####!no longer using!#### consist_ (bool, optional): Indicates whether to include a consistency loss. 
-                                   Defaults to False.
+
     Returns:
         dict: Dictionary containing averaged losses (epoch_loss, epoch_seg_loss, epoch_class_loss).
     """
@@ -332,7 +329,8 @@ def main():
                                   shuffle=True,
                                   num_workers=0,
                                   worker_init_fn=utils.seed_worker,
-                                  collate_fn=monai.data.utils.default_collate) ## ??%% monai.data.utils.default_collate is depreciated? // torch.utils.data.dataloader.default_collate
+                                  collate_fn=monai.data.utils.default_collate) 
+                                  ## if monai.data.utils.default_collate is depreciated, use torch.utils.data.dataloader.default_collate
         val_loader = DataLoader(val_dataset,
                                 batch_size=1,
                                 shuffle=False,

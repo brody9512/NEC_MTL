@@ -1,13 +1,11 @@
-# only using diceloss, dicebceloss, and uptask loss
 from typing import Optional, List
 from torch import nn
 import torch.nn.functional as F
 from torch.nn.modules.loss import _Loss
 import torch
-# from segmentation_models_pytorch.utils.base import to_tensor
 import segmentation_models_pytorch as smp
 
-
+# from segmentation_models_pytorch.utils.base import to_tensor
 # To_tensor is a helper function from old SMP library, but it's not exposed on newer versions 
 # So, create custom function to onvert Python lists/NumPy arrays into PyTorch tensors
 def to_tensor(data, dtype=None):
@@ -25,7 +23,7 @@ def soft_dice_score(output, target, smooth=0.0, eps=1e-7, dims=None): # (output:
     dice_score = (2.0 * intersection + smooth) / (cardinality + smooth).clamp_min(eps)
     return dice_score
 
-class DiceLoss(_Loss): # DiceLoss(nn.module) ??
+class DiceLoss(_Loss): # (nn.module)
     def __init__(
         self,
         mode: str,
@@ -139,13 +137,11 @@ class Uptask_Loss_Train(torch.nn.Module):
         self.loss_cls = None
         self.loss_seg = None
         self.loss_rec = torch.nn.L1Loss()
-        # self.loss_consist = Consistency_Loss_Train() --> %% NO get rid of it
         
         # Weights for each component of the loss
         self.cls_weight = cls_weight
         self.seg_weight = seg_weight
         self.rec_weight = 1.0
-        # self.consist_weight = consist_weight
         
         # Select loss type
         self.loss_type = loss_type
@@ -161,16 +157,11 @@ class Uptask_Loss_Train(torch.nn.Module):
         # If segmentation prediction and ground truth are provided, calculate segmentation loss
         loss_seg = self.loss_seg(seg_pred, seg_gt) if seg_pred is not None and seg_gt is not None else 0
         
-        # If consistency needs to be calculated
-        # loss_consist = self.loss_consist(cls_pred, seg_pred) if consist else 0
-        
         # Combine the losses
-        total = self.cls_weight * loss_cls + self.seg_weight * loss_seg # self.consist_weight * loss_consist
+        total = self.cls_weight * loss_cls + self.seg_weight * loss_seg
         
         # Record the individual components of the loss
         total_ = {'CLS_Loss': (self.cls_weight * loss_cls).item(), 'SEG_Loss': (self.seg_weight * loss_seg).item()}
-        # if consist:
-        #     total_['Consist_Loss'] = (self.consist_weight * loss_consist).item()
         
         return total, total_
 
@@ -181,8 +172,6 @@ class Uptask_Loss_Test(torch.nn.Module):
         self.loss_cls     = torch.nn.BCEWithLogitsLoss()
         self.loss_seg     = Dice_BCE_Loss()
         self.loss_rec     = torch.nn.L1Loss()
-        # self.loss_consist = Consistency_Loss_Test()
-
 
     def forward(self, cls_pred=None, cls_gt=None):
             total = self.loss_cls(cls_pred, cls_gt)

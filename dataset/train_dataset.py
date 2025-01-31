@@ -25,14 +25,14 @@ class MyLambda(A_Lambda):
 
 
 ########## <-- Train --> ##########
-class CustomDataset_Train(Dataset): # %% go with monai for now and if it doesn't work we will uncomment torch.utils // or vice versa
+class CustomDataset_Train(Dataset): # %% go with monai for now and if it doesn't work we will uncomment torch.utils
     """
     Custom Dataset for Multi-task learning (Segmentation + Classification).
     For training or validation modes, with data augmentations.
     In the future, you could split this into dataset_internal.py (for train)
     and dataset_external.py (for test) if the logic significantly differs.
     """
-    def __init__(self, df, args, training=True): # ,apply_voi=False,hu_threshold=None,clipLimit=None,min_side=None $$
+    def __init__(self, df, args, training=True):
         
         self.df = df
         self.args = args

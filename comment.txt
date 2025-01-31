@@ -1,7 +1,4 @@
-##NEEDS WORK##
-
--------------------
-##DONE##
+### DONE ###
 config.py -> finished both train and test 
 optim.py -> = for both train and test
 dataset -> train_dataset and test_dataset
@@ -10,12 +7,16 @@ model.py -> finished = same for train and test
 utils.py -> finished both train and test 
 test.py
 train.py
-preprocessing.py
+preprocessing_dcmtopng.py
+-------------------
+##NEEDS WORK##
+n/a 
 --------------------
-Comments from file to keep in mind:
-dataset --> train_dataset & test_dataset
--  # segmentation and classification both for train but only classification for test.py
---------------------
-ChatGPT input:
-can you refactor this code for readability, maintainability, clarity, conciseness? this would be train.py of the multi-task learning research model. It was developed in a big chunk of one fat file. There are two main codes, MTL_train.py and MTL_test.py. This is only for refactoring MTL_train --> which will be train.py where main() runs, and hoping it be separated, but give refactorization first.
-As of now, I identified directory architecture to split these in (there is also MTL_test.py but its very similar and uses similar functions, so if this is done well, I will be able to do the test.py as well): ## one argparser argument 'weight' takes a file based on the creation of the code i believe, can this me modified according to your refactoring? ## saving models and getting printing/saving metrics are tricky for me to understand so please make them concise # no cbam, no consistency loss, but does that mean i should remove "consist_" on argparser and other codes; maybe it's different from the consistency loss part; please analyze and give me your input? loss classes and customdataset_train looks good. Argparsers are correct, so fix the code using the argparser portion. optimizer looks good. no room for error since it's refactoring. be mindful to not change in ways that will cause errors
+### Comments ###
+- dataset --> train_dataset & test_dataset
+- losses --> only using diceloss, dicebceloss, and uptask loss
+- segmentation and classification both for train but only classification for test
+- save_dir + saving and loading logic ==> revisit after finishing PCG refactoring
+- model figure = extract from supplements and send it to me (request brody and remind him)
+- model metrics at the end of readme.md = use figure 1 from supplements
+- implement gradcam if time allows (if possible) 
