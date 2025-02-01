@@ -7,7 +7,6 @@
 import numpy as np
 import cv2
 import os
-import os 
 from glob import glob
 import argparse
 import shutil
@@ -18,7 +17,6 @@ import pydicom
 import pydicom.pixel_data_handlers
 import skimage.io
 import skimage.util
-from sklearn.metrics import accuracy_score
 from pydicom.pixel_data_handlers.util import apply_modality_lut, apply_voi_lut
 from tqdm import tqdm
 from monai.transforms import *
