@@ -19,6 +19,7 @@ import optim
 from losses import Uptask_Loss_Test
 from model import MultiTaskModel
 from dataset.test_dataset import CustomDataset_Test
+from gradcam import generate_gradcam_visualizations_test
 
 
 # -----------------------------------------
@@ -232,6 +233,10 @@ def main():
     
     # Confusion matrix 그리기
     utils.plot_confusion_matrix(cm, target_names,target_names_1,save_path=os.path.join(save_dir, f"confusion_matrix.png"))#'/path/to/save/image.png
+
+    # GradCAM
+    generate_gradcam_visualizations_test(mtl_model, args.layers, test_loader, DEVICE, args.model_threshold, save_dir)
+
     
 
 # -----------------------------------------
