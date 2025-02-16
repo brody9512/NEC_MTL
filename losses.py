@@ -3,7 +3,6 @@ from torch import nn
 import torch.nn.functional as F
 from torch.nn.modules.loss import _Loss
 import torch
-import segmentation_models_pytorch as smp
 
 # from segmentation_models_pytorch.utils.base import to_tensor
 # To_tensor is a helper function from old SMP library, but it's not exposed on newer versions 

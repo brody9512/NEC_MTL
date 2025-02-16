@@ -5,14 +5,12 @@ import torch
 import pandas as pd
 import numpy as np
 import monai
-import matplotlib.colors as mcolors
 from monai.transforms import *
 import monai
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import ssl
 import math
-import itertools
 import shutil
 from torch.optim import lr_scheduler
 import torch.nn as nn
