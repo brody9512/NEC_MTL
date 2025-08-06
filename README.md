@@ -1,6 +1,6 @@
 ﻿# NEC_MTL: Detection of Neonatal Pneumoperitoneum on Radiographs Using Deep Multi-task Learning
 
-<p align="center"><img width="100%" src="./image/overview.tif" /></p>
+<p align="center"><img width="100%" src="./image/model_design.png" /></p>
 
 ## 💡 Highlights
 - Develop a multi-task learning framework integrating DenseNet-169 as a shared encoder, with task-specific classification (CLS) and segmentation (SEG) heads, enhancing pneumoperitoneum detection by capturing both global and localized features.
@@ -98,5 +98,6 @@ Asan Medical Center (AMC) private data
 
 ##🙋🏻‍♂️ Acknowledgements
 We would like to thank **Junseong Lee** ([@junjslee](https://github.com/junjslee)) for his remarkable contributions to refactoring the code structure and setting up this GitHub repository.
+
 
 
